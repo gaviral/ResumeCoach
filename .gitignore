@@ -66,13 +66,13 @@ backend/.env
 # NOTE: frontend/.env is intentionally NOT ignored for Vite build-time vars
 
 # Virtual Environments & Dependencies (Global)
-.Python
-[Bb]in
-[Ii]nclude
-[Ll]ib
-[Ll]ib64
-[Ll]ocal
-[Ss]cripts
+# .Python
+# [Bb]in
+# [Ii]nclude
+# [Ll]ib
+# [Ll]ib64
+# [Ll]ocal
+# [Ss]cripts
 pyvenv.cfg
 .venv
 venv/
@@ -86,9 +86,11 @@ pip-selfcheck.json
 ########################################################
 # Infrastructure (AWS CDK / TypeScript)
 ########################################################
-infrastructure/*.js
+infrastructure/lib/*.js
+infrastructure/lib/*.d.ts
+infrastructure/bin/*.js
+infrastructure/bin/*.d.ts
 !infrastructure/jest.config.js # Keep Jest config
-infrastructure/*.d.ts
 infrastructure/node_modules
 infrastructure/.cdk.staging
 infrastructure/cdk.out
