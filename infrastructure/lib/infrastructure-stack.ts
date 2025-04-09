@@ -18,20 +18,20 @@ export class InfrastructureStack extends cdk.Stack {
 
     // --- Database (Schema remains simple PK, but usage changes) ---
     const dynamoTable = new dynamodb.Table(this, 'ResumeCoachItemsTable', {
-      tableName: 'ResumeCoachItems', // Reusing the table name from V1
-      partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING }, // PK for documents, analyses, etc.
+      tableName: 'ResumeCoachItems',
+      partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: RemovalPolicy.DESTROY,
       timeToLiveAttribute: 'ttl',
     });
 
-    // --- Backend Lambda (Updated for V2) ---
+    // --- Backend Lambda (Update Environment Placeholder) ---
     const backendLambda = new lambda.Function(this, 'ResumeCoachBackendLambda', {
       runtime: lambda.Runtime.PYTHON_3_11,
       handler: 'handler.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../../backend'), {
         bundling: {
-          image: lambda.Runtime.PYTHON_3_11.bundlingImage,
+          image: lambda.Runtime.PYTHON_3_11.bundlingImage, // Match runtime
           command: [
             'bash', '-c', `
             pip install -r requirements.txt -t /asset-output &&
@@ -43,77 +43,73 @@ export class InfrastructureStack extends cdk.Stack {
       environment: {
         TABLE_NAME: dynamoTable.tableName,
         LOG_LEVEL: 'INFO',
-        // ** IMPORTANT: OPENAI_API_KEY is NOT set here for security. **
-        // ** It must be added manually via the AWS Lambda Console after deployment. **
-        // OPENAI_API_KEY: 'dummy-value-to-be-replaced', // Avoid even dummy values if possible
+        // Add placeholder for OpenAI API Key.
+        // IMPORTANT: The actual key will be set manually in the AWS Lambda Console
+        // after deployment for security reasons. Do NOT commit your real key here.
+        OPENAI_API_KEY: 'CONFIGURE_IN_LAMBDA_CONSOLE', // Placeholder value
       },
-      // ** Increased timeout and memory for LLM calls **
-      timeout: Duration.seconds(30), // Increased from 15s
-      memorySize: 512, // Increased from 128MB, adjust as needed
-      functionName: 'ResumeCoachBackendHandlerV2', // Optional: Update name
-      description: 'Handles analysis, chat, and document CRUD for ResumeCoach V2',
+      timeout: Duration.seconds(60), // Increase timeout for potentially longer LLM calls
+      memorySize: 256, // Increase memory slightly for LangChain/OpenAI libs if needed
+      functionName: 'ResumeCoachBackendHandler',
+      description: 'Handles ResumeCoach analysis, chat, and default item fetching.',
       architecture: lambda.Architecture.ARM_64,
     });
 
-    // Grant Lambda permissions to access the DynamoDB table
-    dynamoTable.grantReadWriteData(backendLambda);
-    // ** NOTE: No extra permissions needed for env vars. If using Secrets Manager, add permissions here. **
+    // Grant Lambda permissions to access DynamoDB
+    dynamoTable.grantReadWriteData(backendLambda); // Read needed for defaults, Write might be needed if adding defaults via API later
 
-    // --- API Gateway (HTTP API - Updated Routes for V2) ---
+    // --- API Gateway (HTTP API Routes) ---
     const httpApi = new apigwv2.HttpApi(this, 'ResumeCoachHttpApi', {
-      apiName: 'ResumeCoachHttpApi', // Keep the same API name
-      description: 'HTTP API for ResumeCoach V2',
+      apiName: 'ResumeCoachHttpApi',
+      description: 'HTTP API for ResumeCoach analysis, chat, and defaults.',
       corsPreflight: {
         allowHeaders: ['Content-Type', 'X-Amz-Date', 'Authorization', 'X-Api-Key', 'X-Amz-Security-Token', 'X-Amz-User-Agent'],
         allowMethods: [
           apigwv2.CorsHttpMethod.OPTIONS, apigwv2.CorsHttpMethod.GET,
-          apigwv2.CorsHttpMethod.POST, // Keep POST
-          // apigwv2.CorsHttpMethod.PUT, // Remove if PUT /documents/{id} not implemented yet
-          apigwv2.CorsHttpMethod.DELETE, // Keep DELETE
+          apigwv2.CorsHttpMethod.POST, // Ensure POST is allowed for analyze/chat
+          // PUT/DELETE might not be needed by frontend V2 unless managing defaults
+          // apigwv2.CorsHttpMethod.PUT, apigwv2.CorsHttpMethod.DELETE,
         ],
-        allowCredentials: false, // Keep false with allowOrigins: '*'
-        allowOrigins: ['*'], // TODO: Restrict in production
+        allowCredentials: false,
+        allowOrigins: ['*'], // TODO: Restrict in production to CloudFront domain
         maxAge: Duration.days(1),
       },
     });
 
-    // Create Lambda integration (same as V1)
+    // Create Lambda integration
     const lambdaIntegration = new HttpLambdaIntegration(
       'LambdaIntegration',
       backendLambda
     );
 
-    // --- Define V2 API routes ---
-    // Remove V1 routes implicitly by not adding them here
+    // --- Define API routes ---
 
-    // Analysis endpoint
+    // V1 Routes (Repurposed for Defaults)
+    httpApi.addRoutes({
+      path: '/items',
+      methods: [apigwv2.HttpMethod.GET], // Only GET needed by frontend V2
+      integration: lambdaIntegration,
+    });
+    httpApi.addRoutes({
+      path: '/items/{id}',
+      methods: [apigwv2.HttpMethod.GET], // Only GET needed by frontend V2
+      integration: lambdaIntegration,
+    });
+
+    // V2 New Routes
     httpApi.addRoutes({
       path: '/analyze',
-      methods: [apigwv2.HttpMethod.POST],
+      methods: [apigwv2.HttpMethod.POST], // Analyze endpoint
       integration: lambdaIntegration,
     });
-
-    // Chat endpoint
     httpApi.addRoutes({
       path: '/chat',
-      methods: [apigwv2.HttpMethod.POST],
+      methods: [apigwv2.HttpMethod.POST], // Chat endpoint
       integration: lambdaIntegration,
     });
 
-    // Document CRUD endpoints
-    httpApi.addRoutes({
-      path: '/documents',
-      methods: [apigwv2.HttpMethod.POST, apigwv2.HttpMethod.GET], // Create and List
-      integration: lambdaIntegration,
-    });
-    httpApi.addRoutes({
-      path: '/documents/{id}',
-      methods: [apigwv2.HttpMethod.GET, apigwv2.HttpMethod.DELETE], // Read one and Delete
-      integration: lambdaIntegration,
-    });
-    // Add PUT route here if implementing update
 
-    // --- Frontend Hosting (S3 + CloudFront - No changes needed) ---
+    // --- Frontend Hosting (S3 + CloudFront) ---
     const frontendBucket = new s3.Bucket(this, 'ResumeCoachFrontendBucket', {
       bucketName: `resumecoach-frontend-${this.account}-${this.region}`,
       publicReadAccess: false,
@@ -149,7 +145,7 @@ export class InfrastructureStack extends cdk.Stack {
        minimumProtocolVersion: cloudfront.SecurityPolicyProtocol.TLS_V1_2_2021,
     });
 
-    // --- S3 Bucket Deployment (No changes needed) ---
+    // --- S3 Bucket Deployment (deploys frontend/dist) ---
     new s3deploy.BucketDeployment(this, 'DeployReactApp', {
       sources: [s3deploy.Source.asset(path.join(__dirname, '../../frontend/dist'))],
       destinationBucket: frontendBucket,
@@ -159,17 +155,19 @@ export class InfrastructureStack extends cdk.Stack {
     });
 
 
-    // --- Stack Outputs (No changes needed) ---
+    // --- Stack Outputs ---
     new cdk.CfnOutput(this, 'ApiGatewayUrl', {
       value: httpApi.apiEndpoint,
       description: 'The base URL of the API Gateway endpoint (us-west-2)',
       exportName: 'ResumeCoachApiEndpoint',
     });
+
     new cdk.CfnOutput(this, 'CloudFrontDomainName', {
       value: distribution.distributionDomainName,
       description: 'The domain name of the CloudFront distribution',
       exportName: 'ResumeCoachCloudFrontDomain',
     });
+
      new cdk.CfnOutput(this, 'FrontendBucketName', {
       value: frontendBucket.bucketName,
       description: 'The name of the S3 bucket hosting the frontend (us-west-2)',

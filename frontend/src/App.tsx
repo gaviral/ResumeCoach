@@ -1,38 +1,88 @@
 // ResumeCoach/frontend/src/App.tsx
-import { useState, useEffect, useCallback } from 'react';
-import axios from 'axios'; // Import AxiosError type
-import './App.css'; // Basic styling
+import { useState, useEffect, useCallback, useRef } from 'react';
+import axios from 'axios';
+import './App.css'; // Assuming V1 styles are a decent base
 
-// Define the structure of an item (matching backend)
-interface Item {
-  id: string;
-  content: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-// Define a type for API errors for better handling
+// --- Interfaces ---
 interface ApiError {
     message: string;
     status?: number;
 }
 
-function App() {
-  const [items, setItems] = useState<Item[]>([]);
-  const [newItemContent, setNewItemContent] = useState<string>('');
-  const [updateItemId, setUpdateItemId] = useState<string>('');
-  const [updateItemContent, setUpdateItemContent] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<ApiError | null>(null); // Use ApiError type
-  const [statusMessage, setStatusMessage] = useState<string>('');
+interface AnalysisResult {
+    analysis: string; // The structured text from the LLM
+}
 
-  // Get API URL from environment variables (set by Vite during build)
+interface ChatMessage {
+    sender: 'user' | 'ai';
+    text: string;
+}
+
+interface DefaultItem {
+    id: string;
+    name: string;
+}
+
+interface DefaultItemContent {
+    id: string;
+    content: string;
+}
+
+// --- Constants ---
+const LOCAL_STORAGE_RESUME_KEY = 'resumeCoach_resumeText';
+const LOCAL_STORAGE_JD_KEY = 'resumeCoach_jobDescriptionText';
+
+function App() {
+  // --- State Variables ---
+  const [resumeText, setResumeText] = useState<string>(() => localStorage.getItem(LOCAL_STORAGE_RESUME_KEY) || '');
+  const [jobDescriptionText, setJobDescriptionText] = useState<string>(() => localStorage.getItem(LOCAL_STORAGE_JD_KEY) || '');
+  const [analysisResult, setAnalysisResult] = useState<string | null>(null);
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState<string>('');
+  const [isLoadingAnalysis, setIsLoadingAnalysis] = useState<boolean>(false);
+  const [isLoadingChat, setIsLoadingChat] = useState<boolean>(false);
+  const [isLoadingDefaults, setIsLoadingDefaults] = useState<boolean>(false);
+  const [error, setError] = useState<ApiError | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string>('');
+  const [defaultItems, setDefaultItems] = useState<DefaultItem[]>([]);
+
+  // Refs for scrolling
+  const analysisEndRef = useRef<null | HTMLDivElement>(null);
+  const chatEndRef = useRef<null | HTMLDivElement>(null);
+
+  // Get API URL from environment variables
   const apiUrl = import.meta.env.VITE_API_URL;
 
-  // --- Helper to format errors ---
+  // --- Effects ---
+
+  // Save text to local storage on change
+  useEffect(() => {
+    localStorage.setItem(LOCAL_STORAGE_RESUME_KEY, resumeText);
+  }, [resumeText]);
+
+  useEffect(() => {
+    localStorage.setItem(LOCAL_STORAGE_JD_KEY, jobDescriptionText);
+  }, [jobDescriptionText]);
+
+  // Scroll to bottom of analysis/chat when content updates
+  useEffect(() => {
+    analysisEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [analysisResult]);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatHistory]);
+
+  // Fetch default items on mount
+  useEffect(() => {
+    fetchDefaultItems();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiUrl]); // Dependency: apiUrl
+
+  // --- Helper Functions ---
   const formatError = (err: unknown): ApiError => {
       if (axios.isAxiosError(err)) {
-          const serverError = err.response?.data?.error; // Check for error message from backend
+          const serverError = err.response?.data?.error;
           return {
               message: serverError || err.message || 'An Axios error occurred',
               status: err.response?.status
@@ -44,231 +94,246 @@ function App() {
       }
   };
 
+  const clearStatus = () => {
+      setError(null);
+      setStatusMessage('');
+  };
+
   // --- API Call Functions ---
 
-  const fetchItems = useCallback(async () => {
-    if (!apiUrl) {
-      setError({ message: "API URL is not configured. Please set VITE_API_URL in your .env file and rebuild/redeploy." });
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    // Clear status message when starting fetch
-    // setStatusMessage('');
-    console.log(`Fetching items from: ${apiUrl}/items`);
-    try {
-      // Ensure the expected response type matches the backend
-      const response = await axios.get<Item[]>(`${apiUrl}/items`);
-      // Sort items by creation date (newest first) for better display
-      const sortedItems = response.data.sort((a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
-      setItems(sortedItems);
-      // Set status only on successful fetch, cleared otherwise
-      setStatusMessage('Items fetched successfully.');
-    } catch (err) {
-      const formattedError = formatError(err);
-      console.error("Error fetching items:", err);
-      setError({ message: `Failed to fetch items: ${formattedError.message}`, status: formattedError.status });
-      setStatusMessage(''); // Clear status on error
-    } finally {
-      setLoading(false);
-    }
-  }, [apiUrl]); // Dependency: only apiUrl
+  const fetchDefaultItems = useCallback(async () => {
+      if (!apiUrl) {
+          setError({ message: "API URL is not configured." });
+          return;
+      }
+      setIsLoadingDefaults(true);
+      clearStatus();
+      console.log(`Fetching default items from: ${apiUrl}/items`);
+      try {
+          const response = await axios.get<DefaultItem[]>(`${apiUrl}/items`);
+          setDefaultItems(response.data || []);
+          setStatusMessage('Default examples list loaded.');
+      } catch (err) {
+          const formattedError = formatError(err);
+          console.error("Error fetching default items:", err);
+          setError({ message: `Failed to fetch default items: ${formattedError.message}`, status: formattedError.status });
+          setDefaultItems([]); // Clear defaults on error
+      } finally {
+          setIsLoadingDefaults(false);
+      }
+  }, [apiUrl]);
 
-  const createItem = async () => {
-    if (!apiUrl) { setError({ message: "API URL not configured." }); return; }
-    if (!newItemContent.trim()) { setError({ message: "New item content cannot be empty." }); return; }
-
-    setLoading(true);
-    setError(null);
-    setStatusMessage('');
-    console.log(`Creating item at: ${apiUrl}/items with content: "${newItemContent}"`);
-    try {
-      // Send content in the request body as expected by the backend
-      const response = await axios.post<Item>(`${apiUrl}/items`, { content: newItemContent });
-      setNewItemContent(''); // Clear input field after successful creation
-      setStatusMessage(`Item "${response.data.content}" created (ID: ${response.data.id}). Refreshing list...`);
-      await fetchItems(); // Refetch the list to show the new item
-    } catch (err) {
-      const formattedError = formatError(err);
-      console.error("Error creating item:", err);
-      setError({ message: `Failed to create item: ${formattedError.message}`, status: formattedError.status });
-      setStatusMessage(''); // Clear status on error
-    } finally {
-      setLoading(false);
-    }
+  const loadDefaultContent = async (id: string, type: 'resume' | 'job_description') => {
+      if (!apiUrl) { setError({ message: "API URL not configured." }); return; }
+      setIsLoadingDefaults(true); // Reuse loading state
+      clearStatus();
+      console.log(`Loading content for default item ID: ${id}`);
+      try {
+          const response = await axios.get<DefaultItemContent>(`${apiUrl}/items/${id}`);
+          if (response.data && response.data.content) {
+              if (type === 'resume') {
+                  setResumeText(response.data.content);
+              } else {
+                  setJobDescriptionText(response.data.content);
+              }
+              setStatusMessage(`Loaded content for ${id}.`);
+          } else {
+               throw new Error("Content not found in response.");
+          }
+      } catch (err) {
+          const formattedError = formatError(err);
+          console.error(`Error loading default content for ${id}:`, err);
+          setError({ message: `Failed to load content for ${id}: ${formattedError.message}`, status: formattedError.status });
+      } finally {
+          setIsLoadingDefaults(false);
+      }
   };
 
-  const updateItem = async () => {
-    if (!apiUrl) { setError({ message: "API URL not configured." }); return; }
-    if (!updateItemId.trim() || !updateItemContent.trim()) {
-        setError({ message: "Both Item ID and New Content are required for update." });
-        return;
-    }
 
-    setLoading(true);
-    setError(null);
-    setStatusMessage('');
-    const itemToUpdateId = updateItemId; // Capture id before clearing fields
-    const itemToUpdateContent = updateItemContent;
-    console.log(`Updating item ID ${itemToUpdateId} at: ${apiUrl}/items/${itemToUpdateId} with content: "${itemToUpdateContent}"`);
-    try {
-      // Send new content in the request body
-      await axios.put(`${apiUrl}/items/${itemToUpdateId}`, { content: itemToUpdateContent });
-      setUpdateItemId(''); // Clear fields after successful update
-      setUpdateItemContent('');
-      setStatusMessage(`Item ID ${itemToUpdateId} updated. Refreshing list...`);
-      await fetchItems(); // Refetch items to show the update
-    } catch (err) {
-       const formattedError = formatError(err);
-       console.error("Error updating item:", err);
-       // Provide specific feedback for 404
-       if (formattedError.status === 404) {
-           setError({ message: `Failed to update: Item with ID ${itemToUpdateId} not found.`, status: 404 });
-       } else {
-           setError({ message: `Failed to update item: ${formattedError.message}`, status: formattedError.status });
-       }
-       setStatusMessage(''); // Clear status on error
-    } finally {
-      setLoading(false);
-    }
+  const handleAnalyze = async () => {
+      if (!apiUrl) { setError({ message: "API URL not configured." }); return; }
+      if (!resumeText.trim() || !jobDescriptionText.trim()) {
+          setError({ message: "Please provide both resume and job description text." });
+          return;
+      }
+
+      setIsLoadingAnalysis(true);
+      clearStatus();
+      setAnalysisResult(null); // Clear previous analysis
+      setChatHistory([]); // Clear previous chat
+      console.log(`Sending analysis request to: ${apiUrl}/analyze`);
+
+      try {
+          const response = await axios.post<AnalysisResult>(`${apiUrl}/analyze`, {
+              resume: resumeText,
+              job_description: jobDescriptionText,
+          });
+          setAnalysisResult(response.data.analysis);
+          setStatusMessage("Analysis complete.");
+      } catch (err) {
+          const formattedError = formatError(err);
+          console.error("Error during analysis:", err);
+          setError({ message: `Analysis failed: ${formattedError.message}`, status: formattedError.status });
+          if (formattedError.status === 503) { // Specific message for missing API key
+              setError({ message: `Analysis failed: ${formattedError.message}. Please ensure the backend OpenAI API Key is configured correctly.`, status: formattedError.status });
+          }
+      } finally {
+          setIsLoadingAnalysis(false);
+      }
   };
 
-  const deleteItem = async (id: string) => {
-    if (!apiUrl) { setError({ message: "API URL not configured." }); return; }
-    // Confirmation dialog
-    if (!window.confirm(`Are you sure you want to permanently delete item ID ${id}?`)) {
-        return;
-    }
+  const handleChatSubmit = async () => {
+      if (!apiUrl) { setError({ message: "API URL not configured." }); return; }
+      if (!chatInput.trim()) { return; } // Don't send empty messages
+      if (!analysisResult) { setError({ message: "Please run an analysis before starting chat." }); return; }
 
-    setLoading(true);
-    setError(null);
-    setStatusMessage('');
-    console.log(`Deleting item ID ${id} at: ${apiUrl}/items/${id}`);
-    try {
-      await axios.delete(`${apiUrl}/items/${id}`);
-      setStatusMessage(`Item ID ${id} deleted. Refreshing list...`);
-      await fetchItems(); // Refetch list to reflect deletion
-    } catch (err) {
-      const formattedError = formatError(err);
-      console.error("Error deleting item:", err);
-      setError({ message: `Failed to delete item: ${formattedError.message}`, status: formattedError.status });
-      setStatusMessage(''); // Clear status on error
-    } finally {
-      setLoading(false);
-    }
+      const newUserMessage: ChatMessage = { sender: 'user', text: chatInput };
+      setChatHistory(prev => [...prev, newUserMessage]); // Show user message immediately
+      setChatInput(''); // Clear input field
+      setIsLoadingChat(true);
+      clearStatus();
+      console.log(`Sending chat request to: ${apiUrl}/chat`);
+
+      try {
+          const response = await axios.post<{ answer: string }>(`${apiUrl}/chat`, {
+              resume: resumeText,
+              job_description: jobDescriptionText,
+              analysis_context: analysisResult, // Send the initial analysis as context
+              question: newUserMessage.text, // Send the user's question
+          });
+
+          const aiResponse: ChatMessage = { sender: 'ai', text: response.data.answer };
+          setChatHistory(prev => [...prev, aiResponse]); // Add AI response
+
+      } catch (err) {
+          const formattedError = formatError(err);
+          console.error("Error during chat:", err);
+          const errorResponse: ChatMessage = { sender: 'ai', text: `Sorry, I encountered an error: ${formattedError.message}` };
+          setChatHistory(prev => [...prev, errorResponse]); // Show error in chat
+          if (formattedError.status === 503) { // Specific message for missing API key
+             setError({ message: `Chat failed: ${formattedError.message}. Please ensure the backend OpenAI API Key is configured correctly.`, status: formattedError.status });
+          } else {
+             setError({ message: `Chat failed: ${formattedError.message}`, status: formattedError.status });
+          }
+      } finally {
+          setIsLoadingChat(false);
+      }
   };
-
-  // --- Effects ---
-
-  // Fetch items on initial component mount or when apiUrl changes
-  useEffect(() => {
-    if (apiUrl) {
-        console.log("API URL is set. Fetching initial items.");
-        fetchItems();
-    } else {
-        console.warn("API URL not available on mount.");
-        // Display warning persistently if URL is missing
-        setError({ message: "API URL is not configured. Please set VITE_API_URL in your .env file, then build and deploy." });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiUrl]); // fetchItems is memoized with useCallback, including it is optional but safe
 
   // --- Render ---
-
   return (
-    <div className="App">
-      <h1>ResumeCoach Foundation - CRUD Demo</h1>
+      <div className="App">
+          <h1>Resume Coach (v2)</h1>
 
-      {/* Status Messages */}
-      {loading && <p className="status loading"><i>Loading...</i></p>}
-      {/* Display error prominently */}
-      {error && <p className="status error"><b>Error:</b> {error.message} {error.status ? `(Status: ${error.status})` : ''}</p>}
-      {/* Display status only if no error */}
-      {statusMessage && !error && <p className="status success"><b>Status:</b> {statusMessage}</p>}
-      {!apiUrl && <p className="status warning"><b>Warning:</b> VITE_API_URL is not set in .env</p>}
+          {/* --- Status/Error Display --- */}
+          <div className="status-container">
+              { (isLoadingAnalysis || isLoadingChat || isLoadingDefaults) && <p className="status loading"><i>Loading...</i></p> }
+              { error && <p className="status error"><b>Error:</b> {error.message} {error.status ? `(Status: ${error.status})` : ''}</p> }
+              { statusMessage && !error && <p className="status success"><b>Status:</b> {statusMessage}</p> }
+              { !apiUrl && <p className="status warning"><b>Warning:</b> VITE_API_URL is not set. API calls will fail.</p> }
+          </div>
 
-      {/* --- Create Item --- */}
-      <div className="card">
-        <h2>Create New Item</h2>
-        <input
-          type="text"
-          aria-label="New item content"
-          placeholder="Enter item content"
-          value={newItemContent}
-          onChange={(e) => setNewItemContent(e.target.value)}
-          disabled={loading || !apiUrl}
-        />
-        <button onClick={createItem} disabled={loading || !apiUrl || !newItemContent.trim()}>
-          Create Item
-        </button>
-      </div>
-
-      {/* --- Update Item --- */}
-      <div className="card">
-        <h2>Update Item</h2>
-        <input
-          type="text"
-          aria-label="Item ID to Update"
-          placeholder="Item ID to Update"
-          value={updateItemId}
-          onChange={(e) => setUpdateItemId(e.target.value)}
-          disabled={loading || !apiUrl}
-        />
-        <input
-          type="text"
-          aria-label="New Content for Update"
-          placeholder="New Content"
-          value={updateItemContent}
-          onChange={(e) => setUpdateItemContent(e.target.value)}
-          disabled={loading || !apiUrl}
-        />
-        <button onClick={updateItem} disabled={loading || !apiUrl || !updateItemId.trim() || !updateItemContent.trim()}>
-          Update Item
-        </button>
-         <button onClick={() => { setUpdateItemId(''); setUpdateItemContent(''); setError(null); }} disabled={loading} className="secondary">
-                Clear Update Fields
-         </button>
-      </div>
-
-      {/* --- Read/List Items --- */}
-      <div className="card">
-        <h2>Items List</h2>
-        <button onClick={fetchItems} disabled={loading || !apiUrl}>
-          Refresh List
-        </button>
-        {items.length === 0 && !loading && apiUrl && <p>No items found in the database.</p>}
-        <ul>
-          {items.map((item) => (
-            <li key={item.id}>
-              <div><strong>ID:</strong> {item.id}</div>
-              <div><strong>Content:</strong> {item.content}</div>
-              <div><strong>Created:</strong> {new Date(item.createdAt).toLocaleString()}</div>
-              <div><strong>Updated:</strong> {new Date(item.updatedAt).toLocaleString()}</div>
-              <div className="item-actions">
-                  <button
-                      onClick={() => { setUpdateItemId(item.id); setUpdateItemContent(item.content); window.scrollTo(0, 0); setError(null); setStatusMessage(''); }}
-                      disabled={loading || !apiUrl}
-                      className="edit"
-                      aria-label={`Edit item ${item.id}`}
-                   >
-                    Edit
-                  </button>
-                  <button
-                      onClick={() => deleteItem(item.id)}
-                      disabled={loading || !apiUrl}
-                      className="delete"
-                      aria-label={`Delete item ${item.id}`}
-                   >
-                    Delete
-                  </button>
+          {/* --- Default Loaders --- */}
+          <div className="card defaults-loader">
+              <h2>Load Examples</h2>
+              <div className="default-buttons">
+                  {defaultItems.filter(item => item.id.includes('RESUME')).map(item => (
+                      <button key={item.id} onClick={() => loadDefaultContent(item.id, 'resume')} disabled={isLoadingDefaults || !apiUrl}>
+                          Load: {item.name}
+                      </button>
+                  ))}
+                  {defaultItems.filter(item => item.id.includes('JOB_DESC')).map(item => (
+                      <button key={item.id} onClick={() => loadDefaultContent(item.id, 'job_description')} disabled={isLoadingDefaults || !apiUrl}>
+                          Load: {item.name}
+                      </button>
+                  ))}
               </div>
-            </li>
-          ))}
-        </ul>
+               <button onClick={fetchDefaultItems} disabled={isLoadingDefaults || !apiUrl} className="secondary">
+                   Refresh Examples List
+               </button>
+          </div>
+
+
+          {/* --- Inputs --- */}
+          <div className="card input-area">
+              <h2>Inputs</h2>
+              <div className="input-grid">
+                  <div className="input-column">
+                      <label htmlFor="resumeInput">Resume Text</label>
+                      <textarea
+                          id="resumeInput"
+                          aria-label="Resume Text"
+                          placeholder="Paste your resume text here..."
+                          value={resumeText}
+                          onChange={(e) => setResumeText(e.target.value)}
+                          disabled={isLoadingAnalysis || isLoadingChat}
+                          rows={15}
+                      />
+                  </div>
+                  <div className="input-column">
+                      <label htmlFor="jobDescriptionInput">Job Description Text</label>
+                      <textarea
+                          id="jobDescriptionInput"
+                          aria-label="Job Description Text"
+                          placeholder="Paste the job description text here..."
+                          value={jobDescriptionText}
+                          onChange={(e) => setJobDescriptionText(e.target.value)}
+                          disabled={isLoadingAnalysis || isLoadingChat}
+                          rows={15}
+                      />
+                  </div>
+              </div>
+              <button
+                  onClick={handleAnalyze}
+                  disabled={isLoadingAnalysis || isLoadingChat || !apiUrl || !resumeText.trim() || !jobDescriptionText.trim()}
+                  className="analyze-button"
+              >
+                  {isLoadingAnalysis ? 'Analyzing...' : 'Analyze Resume'}
+              </button>
+          </div>
+
+          {/* --- Analysis Results --- */}
+          {analysisResult && (
+              <div className="card analysis-results">
+                  <h2>Analysis Results</h2>
+                  {/* Use pre-wrap to preserve formatting from the LLM */}
+                  <pre className="analysis-content">{analysisResult}</pre>
+                  <div ref={analysisEndRef} /> {/* Scroll target */}
+              </div>
+          )}
+
+          {/* --- Chat Interface --- */}
+          {analysisResult && ( // Only show chat after analysis
+              <div className="card chat-interface">
+                  <h2>Follow-up Chat</h2>
+                  <div className="chat-history">
+                      {chatHistory.map((msg, index) => (
+                          <div key={index} className={`chat-message ${msg.sender}`}>
+                              <span className="sender-label">{msg.sender === 'user' ? 'You' : 'AI'}:</span>
+                              {/* Use pre-wrap for chat messages too */}
+                              <pre className="message-text">{msg.text}</pre>
+                          </div>
+                      ))}
+                      {isLoadingChat && <div className="chat-message ai loading"><i>AI is thinking...</i></div>}
+                       <div ref={chatEndRef} /> {/* Scroll target */}
+                  </div>
+                  <div className="chat-input-area">
+                      <input
+                          type="text"
+                          aria-label="Chat input"
+                          placeholder="Ask a follow-up question about the analysis..."
+                          value={chatInput}
+                          onChange={(e) => setChatInput(e.target.value)}
+                          onKeyPress={(e) => e.key === 'Enter' && !isLoadingChat && handleChatSubmit()}
+                          disabled={isLoadingChat || !apiUrl}
+                      />
+                      <button onClick={handleChatSubmit} disabled={isLoadingChat || !apiUrl || !chatInput.trim()}>
+                          Send
+                      </button>
+                  </div>
+              </div>
+          )}
       </div>
-    </div>
   );
 }
 
