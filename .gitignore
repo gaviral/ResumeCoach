@@ -1,0 +1,245 @@
+# General
+.DS_Store
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+.history/
+*.vsix
+
+# IDE - JetBrains (IntelliJ, PyCharm, WebStorm, etc.)
+# Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio, WebStorm and Rider
+# Reference: https://intellij-support.jetbrains.com/hc/en-us/articles/206544839
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/**/usage.statistics.xml
+.idea/**/dictionaries
+.idea/**/shelf
+.idea/**/aws.xml
+.idea/**/contentModel.xml
+.idea/**/dataSources/
+.idea/**/dataSources.ids
+.idea/**/dataSources.local.xml
+.idea/**/sqlDataSources.xml
+.idea/**/dynamic.xml
+.idea/**/uiDesigner.xml
+.idea/**/dbnavigator.xml
+.idea/**/gradle.xml
+.idea/**/libraries
+# .idea/artifacts # Uncomment if using auto-import for Gradle/Maven
+# .idea/compiler.xml # Uncomment if using auto-import for Gradle/Maven
+# .idea/jarRepositories.xml # Uncomment if using auto-import for Gradle/Maven
+# .idea/modules.xml # Uncomment if using auto-import for Gradle/Maven
+# .idea/*.iml # Uncomment if using auto-import for Gradle/Maven
+# .idea/modules # Uncomment if using auto-import for Gradle/Maven
+# *.iml # Uncomment if using auto-import for Gradle/Maven
+# *.ipr # Uncomment if using auto-import for Gradle/Maven
+cmake-build-*/
+.idea/**/mongoSettings.xml
+*.iws
+.idea_modules/
+atlassian-ide-plugin.xml
+.idea/replstate.xml
+.idea/sonarlint/
+com_crashlytics_export_strings.xml
+crashlytics.properties
+crashlytics-build.properties
+fabric.properties
+.idea/httpRequests
+.idea/caches/build_file_checksums.ser
+out/ # IntelliJ output
+
+# Environment Variables (Specific locations)
+/.env # Ignore .env file in the root directory
+infrastructure/.env
+backend/.env
+# NOTE: frontend/.env is intentionally NOT ignored for Vite build-time vars
+
+# Virtual Environments & Dependencies (Global)
+.Python
+[Bb]in
+[Ii]nclude
+[Ll]ib
+[Ll]ib64
+[Ll]ocal
+[Ss]cripts
+pyvenv.cfg
+.venv
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+pip-selfcheck.json
+/node_modules # Ignore root node_modules if present
+
+########################################################
+# Infrastructure (AWS CDK / TypeScript)
+########################################################
+infrastructure/*.js
+!infrastructure/jest.config.js # Keep Jest config
+infrastructure/*.d.ts
+infrastructure/node_modules
+infrastructure/.cdk.staging
+infrastructure/cdk.out
+
+########################################################
+# Frontend (React / Vite / TypeScript)
+########################################################
+frontend/logs # Specific logs folder if used
+frontend/node_modules
+frontend/dist
+frontend/dist-ssr
+frontend/*.local # Ignores .env.local, .env.development.local etc.
+
+# Editor files previously here are now handled globally
+
+########################################################
+# Backend (Python)
+########################################################
+backend/__pycache__
+backend/*.py[cod]
+backend/*$py.class
+backend/*.so # C extensions
+
+# Distribution / packaging
+backend/.Python
+backend/build/
+backend/develop-eggs/
+backend/dist/
+backend/downloads/
+backend/eggs/
+backend/.eggs/
+backend/lib/ # If generated locally
+backend/lib64/ # If generated locally
+backend/parts/
+backend/sdist/
+backend/var/
+backend/wheels/
+backend/share/python-wheels/
+backend/*.egg-info/
+backend/.installed.cfg
+backend/*.egg
+backend/MANIFEST
+
+# PyInstaller
+backend/*.manifest
+backend/*.spec
+
+# Installer logs
+backend/pip-log.txt
+backend/pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+backend/htmlcov/
+backend/.tox/
+backend/.nox/
+backend/.coverage
+backend/.coverage.*
+backend/.cache
+backend/nosetests.xml
+backend/coverage.xml
+backend/*.cover
+backend/*.py,cover
+backend/.hypothesis/
+backend/.pytest_cache/
+backend/cover/
+
+# Translations
+backend/*.mo
+backend/*.pot
+
+# Django stuff:
+backend/*.log # Django logs if configured this way
+backend/local_settings.py
+backend/db.sqlite3
+backend/db.sqlite3-journal
+
+# Flask stuff:
+backend/instance/
+backend/.webassets-cache
+
+# Scrapy stuff:
+backend/.scrapy
+
+# Sphinx documentation
+backend/docs/_build/
+
+# PyBuilder
+backend/.pybuilder/
+backend/target/
+
+# Jupyter Notebook
+backend/.ipynb_checkpoints
+
+# IPython
+backend/profile_default/
+backend/ipython_config.py
+
+# pyenv (Commented out - decide per project)
+# backend/.python-version
+
+# pipenv (Commented out - commit lock usually recommended)
+#Pipfile.lock
+
+# UV (Commented out - commit lock usually recommended)
+#uv.lock
+
+# poetry (Commented out - commit lock usually recommended)
+#poetry.lock
+
+# pdm (Commented out - commit lock usually recommended)
+#pdm.lock
+backend/.pdm.toml
+backend/.pdm-python
+backend/.pdm-build/
+
+# PEP 582
+backend/__pypackages__/
+
+# Celery stuff
+backend/celerybeat-schedule
+backend/celerybeat.pid
+
+# SageMath parsed files
+backend/*.sage.py
+
+# Spyder project settings
+backend/.spyderproject
+backend/.spyproject
+
+# Rope project settings
+backend/.ropeproject
+
+# mkdocs documentation
+backend/site/
+
+# mypy
+backend/.mypy_cache/
+backend/.dmypy.json
+backend/dmypy.json
+
+# Pyre type checker
+backend/.pyre/
+
+# pytype static type analyzer
+backend/.pytype/
+
+# Cython debug symbols
+backend/cython_debug/
+
+# Ruff stuff:
+backend/.ruff_cache/
+
+# PyPI configuration file
+backend/.pypirc
