@@ -1,0 +1,2 @@
+# ResumeCoach/backend/requirements.txt
+boto3
