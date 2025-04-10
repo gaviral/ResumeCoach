@@ -1,6 +1,8 @@
 // ResumeCoach/frontend/src/App.tsx
 import { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
+import ReactMarkdown from 'react-markdown'; // Import ReactMarkdown
+import remarkGfm from 'remark-gfm'; // Import remark-gfm for GitHub Flavored Markdown support
 import './App.css'; // Styles updated
 
 // --- Interfaces ---
@@ -10,7 +12,7 @@ interface ApiError {
 }
 
 interface AnalysisResult {
-    analysis: string; // The structured text from the LLM
+    analysis: string; // The structured text from the LLM (potentially markdown)
 }
 
 interface ChatMessage {
@@ -66,11 +68,12 @@ function App() {
 
   // Scroll to bottom of analysis/chat when content updates
   useEffect(() => {
-    analysisEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Scroll analysis into view slightly differently now it's not a pre tag
+    analysisEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [analysisResult]);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [chatHistory]);
 
   // Fetch default items on mount
@@ -311,7 +314,12 @@ function App() {
           {analysisResult && (
               <div className="card analysis-results">
                   <h2>Analysis Results</h2>
-                  <pre className="analysis-content">{analysisResult}</pre>
+                  {/* Use ReactMarkdown to render the analysis result */}
+                  <div className="analysis-content"> {/* Add a wrapper div for styling */}
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {analysisResult}
+                      </ReactMarkdown>
+                  </div>
                   <div ref={analysisEndRef} /> {/* Scroll target */}
               </div>
           )}
@@ -324,7 +332,12 @@ function App() {
                       {chatHistory.map((msg, index) => (
                           <div key={index} className={`chat-message ${msg.sender}`}>
                               <span className="sender-label">{msg.sender === 'user' ? 'You' : 'AI Coach'}:</span>
-                              <pre className="message-text">{msg.text}</pre>
+                              {/* Also render chat messages with ReactMarkdown in case AI uses it */}
+                              <div className="message-text"> {/* Wrapper div */}
+                                <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: 'span' }}>
+                                    {msg.text}
+                                </ReactMarkdown>
+                              </div>
                           </div>
                       ))}
                       {isLoadingChat && <div className="chat-message ai loading"><i>AI Coach is thinking...</i></div>}
