@@ -1,7 +1,7 @@
 // ResumeCoach/frontend/src/App.tsx
 import { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
-import './App.css'; // Assuming V1 styles are a decent base
+import './App.css'; // Styles updated
 
 // --- Interfaces ---
 interface ApiError {
@@ -173,10 +173,11 @@ function App() {
       } catch (err) {
           const formattedError = formatError(err);
           console.error("Error during analysis:", err);
-          setError({ message: `Analysis failed: ${formattedError.message}`, status: formattedError.status });
-          if (formattedError.status === 503) { // Specific message for missing API key
-              setError({ message: `Analysis failed: ${formattedError.message}. Please ensure the backend OpenAI API Key is configured correctly.`, status: formattedError.status });
+          let specificError = { message: `Analysis failed: ${formattedError.message}`, status: formattedError.status };
+          if (formattedError.status === 503 || formattedError.message.toLowerCase().includes('api key')) { // Broader check for API key issues
+              specificError.message = `Analysis failed: ${formattedError.message}. Please ensure the backend OpenAI API Key is configured correctly.`;
           }
+          setError(specificError);
       } finally {
           setIsLoadingAnalysis(false);
       }
@@ -208,29 +209,43 @@ function App() {
       } catch (err) {
           const formattedError = formatError(err);
           console.error("Error during chat:", err);
-          const errorResponse: ChatMessage = { sender: 'ai', text: `Sorry, I encountered an error: ${formattedError.message}` };
+          const errorText = `Sorry, I encountered an error: ${formattedError.message}`;
+          const errorResponse: ChatMessage = { sender: 'ai', text: errorText };
           setChatHistory(prev => [...prev, errorResponse]); // Show error in chat
-          if (formattedError.status === 503) { // Specific message for missing API key
-             setError({ message: `Chat failed: ${formattedError.message}. Please ensure the backend OpenAI API Key is configured correctly.`, status: formattedError.status });
-          } else {
-             setError({ message: `Chat failed: ${formattedError.message}`, status: formattedError.status });
+
+          let specificError = { message: `Chat failed: ${formattedError.message}`, status: formattedError.status };
+           if (formattedError.status === 503 || formattedError.message.toLowerCase().includes('api key')) { // Broader check
+              specificError.message = `Chat failed: ${formattedError.message}. Please ensure the backend OpenAI API Key is configured correctly.`;
           }
+          setError(specificError);
       } finally {
           setIsLoadingChat(false);
       }
   };
 
+  // Determine status container classes
+  const isLoading = isLoadingAnalysis || isLoadingChat || isLoadingDefaults;
+  const showStatusContainer = isLoading || error || statusMessage || !apiUrl;
+  const statusContainerClasses = [
+      "status-container",
+      showStatusContainer ? "visible" : "",
+      isLoading ? "loading" : "",
+      error ? "error" : "",
+      !error && statusMessage ? "success" : "",
+      !apiUrl ? "warning" : "" // Warning takes precedence if API URL is missing
+  ].filter(Boolean).join(" "); // Filter out empty strings and join
+
   // --- Render ---
   return (
       <div className="App">
-          <h1>Resume Coach (v2)</h1>
+          <h1>Resume Coach</h1> {/* Simplified title */}
 
           {/* --- Status/Error Display --- */}
-          <div className="status-container">
-              { (isLoadingAnalysis || isLoadingChat || isLoadingDefaults) && <p className="status loading"><i>Loading...</i></p> }
-              { error && <p className="status error"><b>Error:</b> {error.message} {error.status ? `(Status: ${error.status})` : ''}</p> }
-              { statusMessage && !error && <p className="status success"><b>Status:</b> {statusMessage}</p> }
-              { !apiUrl && <p className="status warning"><b>Warning:</b> VITE_API_URL is not set. API calls will fail.</p> }
+          <div className={statusContainerClasses}>
+              { isLoading && <p className="status"><i>Loading... Please wait.</i></p> }
+              { error && <p className="status"><b>Error:</b> {error.message} {error.status ? `(Status: ${error.status})` : ''}</p> }
+              { !error && statusMessage && <p className="status"><b>Status:</b> {statusMessage}</p> }
+              { !apiUrl && <p className="status"><b>Configuration Warning:</b> VITE_API_URL is not set. API calls will fail.</p> }
           </div>
 
           {/* --- Default Loaders --- */}
@@ -238,13 +253,13 @@ function App() {
               <h2>Load Examples</h2>
               <div className="default-buttons">
                   {defaultItems.filter(item => item.id.includes('RESUME')).map(item => (
-                      <button key={item.id} onClick={() => loadDefaultContent(item.id, 'resume')} disabled={isLoadingDefaults || !apiUrl}>
-                          Load: {item.name}
+                      <button key={item.id} onClick={() => loadDefaultContent(item.id, 'resume')} disabled={isLoading || !apiUrl}>
+                          Load: {item.name} (Resume)
                       </button>
                   ))}
                   {defaultItems.filter(item => item.id.includes('JOB_DESC')).map(item => (
-                      <button key={item.id} onClick={() => loadDefaultContent(item.id, 'job_description')} disabled={isLoadingDefaults || !apiUrl}>
-                          Load: {item.name}
+                      <button key={item.id} onClick={() => loadDefaultContent(item.id, 'job_description')} disabled={isLoading || !apiUrl}>
+                          Load: {item.name} (JD)
                       </button>
                   ))}
               </div>
@@ -259,36 +274,36 @@ function App() {
               <h2>Inputs</h2>
               <div className="input-grid">
                   <div className="input-column">
-                      <label htmlFor="resumeInput">Resume Text</label>
+                      <label htmlFor="resumeInput">Your Resume</label>
                       <textarea
                           id="resumeInput"
                           aria-label="Resume Text"
-                          placeholder="Paste your resume text here..."
+                          placeholder="Paste your full resume text here..."
                           value={resumeText}
                           onChange={(e) => setResumeText(e.target.value)}
-                          disabled={isLoadingAnalysis || isLoadingChat}
-                          rows={15}
+                          disabled={isLoading}
+                          rows={15} // You can adjust this based on the new min-height in CSS
                       />
                   </div>
                   <div className="input-column">
-                      <label htmlFor="jobDescriptionInput">Job Description Text</label>
+                      <label htmlFor="jobDescriptionInput">Target Job Description</label>
                       <textarea
                           id="jobDescriptionInput"
                           aria-label="Job Description Text"
-                          placeholder="Paste the job description text here..."
+                          placeholder="Paste the target job description text here..."
                           value={jobDescriptionText}
                           onChange={(e) => setJobDescriptionText(e.target.value)}
-                          disabled={isLoadingAnalysis || isLoadingChat}
-                          rows={15}
+                          disabled={isLoading}
+                          rows={15} // You can adjust this based on the new min-height in CSS
                       />
                   </div>
               </div>
               <button
                   onClick={handleAnalyze}
-                  disabled={isLoadingAnalysis || isLoadingChat || !apiUrl || !resumeText.trim() || !jobDescriptionText.trim()}
+                  disabled={isLoading || !apiUrl || !resumeText.trim() || !jobDescriptionText.trim()}
                   className="analyze-button"
               >
-                  {isLoadingAnalysis ? 'Analyzing...' : 'Analyze Resume'}
+                  {isLoadingAnalysis ? 'Analyzing...' : 'Analyze Resume vs Job Description'}
               </button>
           </div>
 
@@ -296,7 +311,6 @@ function App() {
           {analysisResult && (
               <div className="card analysis-results">
                   <h2>Analysis Results</h2>
-                  {/* Use pre-wrap to preserve formatting from the LLM */}
                   <pre className="analysis-content">{analysisResult}</pre>
                   <div ref={analysisEndRef} /> {/* Scroll target */}
               </div>
@@ -309,28 +323,26 @@ function App() {
                   <div className="chat-history">
                       {chatHistory.map((msg, index) => (
                           <div key={index} className={`chat-message ${msg.sender}`}>
-                              <span className="sender-label">{msg.sender === 'user' ? 'You' : 'AI'}:</span>
-                              {/* Use pre-wrap for chat messages too */}
+                              <span className="sender-label">{msg.sender === 'user' ? 'You' : 'AI Coach'}:</span>
                               <pre className="message-text">{msg.text}</pre>
                           </div>
                       ))}
-                      {isLoadingChat && <div className="chat-message ai loading"><i>AI is thinking...</i></div>}
+                      {isLoadingChat && <div className="chat-message ai loading"><i>AI Coach is thinking...</i></div>}
                        <div ref={chatEndRef} /> {/* Scroll target */}
                   </div>
-                  <div className="chat-input-area">
+                  <form className="chat-input-area" onSubmit={(e) => { e.preventDefault(); handleChatSubmit(); }}>
                       <input
                           type="text"
                           aria-label="Chat input"
-                          placeholder="Ask a follow-up question about the analysis..."
+                          placeholder="Ask a follow-up question (e.g., 'Suggest improvements for...') "
                           value={chatInput}
                           onChange={(e) => setChatInput(e.target.value)}
-                          onKeyPress={(e) => e.key === 'Enter' && !isLoadingChat && handleChatSubmit()}
                           disabled={isLoadingChat || !apiUrl}
                       />
-                      <button onClick={handleChatSubmit} disabled={isLoadingChat || !apiUrl || !chatInput.trim()}>
+                      <button type="submit" disabled={isLoadingChat || !apiUrl || !chatInput.trim()}>
                           Send
                       </button>
-                  </div>
+                  </form>
               </div>
           )}
       </div>

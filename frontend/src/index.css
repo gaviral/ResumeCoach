@@ -1,68 +1,253 @@
+/* src/index.css */
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
+  /* Font & Base */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  line-height: 1.6;
   font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  box-sizing: border-box; /* Apply border-box globally */
+
+  /* Light Theme Colors */
+  --color-text-light: #213547;
+  --color-background-light: #ffffff;
+  --color-primary-light: #646cff;
+  --color-primary-hover-light: #535bf2;
+  --color-secondary-background-light: #f8f9fa;
+  --color-border-light: #dee2e6;
+  --color-input-background-light: #ffffff;
+  --color-input-border-light: #ced4da;
+  --color-button-background-light: #f1f3f5;
+  --color-button-hover-background-light: #e9ecef;
+  --color-success-light: #28a745;
+  --color-error-light: #dc3545;
+  --color-warning-light: #ffc107;
+  --color-info-light: #17a2b8;
+  --color-muted-light: #6c757d;
+
+  /* Dark Theme Colors */
+  --color-text-dark: rgba(255, 255, 255, 0.87);
+  --color-background-dark: #1a1a1a; /* Slightly darker than default */
+  --color-primary-dark: #747bff; /* Lighter primary for dark mode */
+  --color-primary-hover-dark: #8a90ff;
+  --color-secondary-background-dark: #242424;
+  --color-border-dark: #444;
+  --color-input-background-dark: #333;
+  --color-input-border-dark: #555;
+  --color-button-background-dark: #3a3a3a;
+  --color-button-hover-background-dark: #4a4a4a;
+  --color-success-dark: #34c759;
+  --color-error-dark: #ff453a;
+  --color-warning-dark: #ffcc00;
+  --color-info-dark: #5ac8fa;
+  --color-muted-dark: #8e8e93;
+
+  /* Spacing & Radius */
+  --spacing-xs: 0.25rem; /* 4px */
+  --spacing-sm: 0.5rem;  /* 8px */
+  --spacing-md: 1rem;    /* 16px */
+  --spacing-lg: 1.5rem;  /* 24px */
+  --spacing-xl: 2rem;    /* 32px */
+  --border-radius-sm: 4px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+
+  /* Transitions */
+  --transition-speed: 0.2s;
+  --transition-func: ease-in-out;
+
+  /* Apply Light Theme by default */
+  color-scheme: light;
+  color: var(--color-text-light);
+  background-color: var(--color-background-light);
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
+/* Apply Dark Theme when preferred */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    color: var(--color-text-dark);
+    background-color: var(--color-background-dark);
+  }
 }
-a:hover {
-  color: #535bf2;
+
+*, *::before, *::after {
+  box-sizing: inherit; /* Inherit border-box */
 }
 
 body {
   margin: 0;
   display: flex;
-  place-items: center;
+  justify-content: center; /* Center content horizontally */
   min-width: 320px;
   min-height: 100vh;
+  padding: var(--spacing-md); /* Add some padding around the body */
+}
+
+#root {
+  width: 100%;
+  max-width: 1200px; /* Limit max width for better readability */
+  margin: 0 auto;
 }
 
 h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+  font-size: 2.5em; /* Slightly smaller H1 */
+  line-height: 1.2;
+  margin-bottom: var(--spacing-lg);
+  text-align: center; /* Center the main title */
+  color: var(--color-primary-light);
+}
+@media (prefers-color-scheme: dark) {
+  h1 { color: var(--color-primary-dark); }
+}
+
+h2 {
+  font-size: 1.5em;
+  margin-top: 0; /* Remove default top margin */
+  margin-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border-light);
+  padding-bottom: var(--spacing-sm);
+  color: var(--color-text-light);
+}
+@media (prefers-color-scheme: dark) {
+  h2 {
+    border-bottom-color: var(--color-border-dark);
+    color: var(--color-text-dark);
+  }
+}
+
+a {
+  font-weight: 500;
+  color: var(--color-primary-light);
+  text-decoration: none; /* Remove underline */
+  transition: color var(--transition-speed) var(--transition-func);
+}
+a:hover {
+  color: var(--color-primary-hover-light);
+  text-decoration: underline; /* Add underline on hover */
+}
+@media (prefers-color-scheme: dark) {
+  a { color: var(--color-primary-dark); }
+  a:hover { color: var(--color-primary-hover-dark); }
 }
 
 button {
-  border-radius: 8px;
+  border-radius: var(--border-radius-md);
   border: 1px solid transparent;
-  padding: 0.6em 1.2em;
+  padding: var(--spacing-sm) var(--spacing-md);
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
   cursor: pointer;
-  transition: border-color 0.25s;
+  transition: border-color var(--transition-speed) var(--transition-func),
+              background-color var(--transition-speed) var(--transition-func),
+              color var(--transition-speed) var(--transition-func),
+              opacity var(--transition-speed) var(--transition-func);
+  background-color: var(--color-button-background-light);
+  color: var(--color-text-light);
 }
 button:hover {
-  border-color: #646cff;
+  border-color: var(--color-primary-light);
+  background-color: var(--color-button-hover-background-light);
 }
 button:focus,
 button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  outline: 4px auto var(--color-primary-light);
+  outline-offset: 2px;
+}
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  border-color: transparent;
+  background-color: var(--color-button-background-light); /* Keep background consistent but faded */
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
+@media (prefers-color-scheme: dark) {
   button {
-    background-color: #f9f9f9;
+    background-color: var(--color-button-background-dark);
+    color: var(--color-text-dark);
+  }
+  button:hover {
+    border-color: var(--color-primary-dark);
+    background-color: var(--color-button-hover-background-dark);
+  }
+  button:focus,
+  button:focus-visible {
+    outline-color: var(--color-primary-dark);
+  }
+   button:disabled {
+     background-color: var(--color-button-background-dark);
+   }
+}
+
+/* Base Input/Textarea Styling */
+textarea,
+input[type="text"] {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-input-border-light);
+  border-radius: var(--border-radius-md);
+  font-size: 1em;
+  font-family: inherit;
+  background-color: var(--color-input-background-light);
+  color: var(--color-text-light);
+  transition: border-color var(--transition-speed) var(--transition-func),
+              box-shadow var(--transition-speed) var(--transition-func);
+}
+
+textarea:focus,
+input[type="text"]:focus,
+textarea:focus-visible,
+input[type="text"]:focus-visible {
+  outline: none;
+  border-color: var(--color-primary-light);
+  box-shadow: 0 0 0 3px rgba(100, 108, 255, 0.25); /* Subtle focus ring */
+}
+
+textarea:disabled,
+input[type="text"]:disabled {
+   opacity: 0.7;
+   background-color: var(--color-secondary-background-light);
+   cursor: not-allowed;
+}
+
+@media (prefers-color-scheme: dark) {
+  textarea,
+  input[type="text"] {
+    background-color: var(--color-input-background-dark);
+    color: var(--color-text-dark);
+    border-color: var(--color-input-border-dark);
+  }
+  textarea:focus,
+  input[type="text"]:focus,
+  textarea:focus-visible,
+  input[type="text"]:focus-visible {
+    border-color: var(--color-primary-dark);
+    box-shadow: 0 0 0 3px rgba(116, 123, 255, 0.3);
+  }
+  textarea:disabled,
+  input[type="text"]:disabled {
+     background-color: var(--color-secondary-background-dark);
+  }
+}
+
+/* Utility Classes */
+.card {
+  background-color: var(--color-secondary-background-light);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+  border: 1px solid var(--color-border-light);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: background-color var(--transition-speed) var(--transition-func),
+              border-color var(--transition-speed) var(--transition-func);
+}
+@media (prefers-color-scheme: dark) {
+  .card {
+    background-color: var(--color-secondary-background-dark);
+    border-color: var(--color-border-dark);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   }
 }

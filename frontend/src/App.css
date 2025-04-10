@@ -1,161 +1,354 @@
-/* Add these styles or modify existing ones in ResumeCoach/frontend/src/App.css */
+/* src/App.css */
 
-/* Layout for Input Areas */
+/* --- Layout & Spacing --- */
+.App {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl); /* Consistent gap between major sections */
+}
+
+/* --- Status/Error Display --- */
+.status-container {
+  margin-bottom: 0; /* Remove bottom margin, rely on .App gap */
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius-md);
+  border: 1px solid transparent; /* Base border */
+  font-weight: 500;
+  display: none; /* Hide by default */
+}
+.status-container.visible {
+  display: block; /* Show when there's content */
+}
+
+.status {
+  margin: 0; /* Remove default margins */
+  padding: var(--spacing-sm) 0; /* Add vertical padding */
+}
+
+/* Specific Status Styles */
+.status-container.loading {
+  border-color: var(--color-info-light);
+  background-color: rgba(23, 162, 184, 0.1);
+  color: var(--color-info-light);
+}
+.status-container.error {
+  border-color: var(--color-error-light);
+  background-color: rgba(220, 53, 69, 0.1);
+  color: var(--color-error-light);
+}
+.status-container.success {
+  border-color: var(--color-success-light);
+  background-color: rgba(40, 167, 69, 0.1);
+  color: var(--color-success-light);
+}
+.status-container.warning {
+  border-color: var(--color-warning-light);
+  background-color: rgba(255, 193, 7, 0.1);
+  color: var(--color-warning-light); /* Use text color for warning */
+}
+
+@media (prefers-color-scheme: dark) {
+  .status-container.loading {
+    border-color: var(--color-info-dark);
+    background-color: rgba(90, 200, 250, 0.15);
+    color: var(--color-info-dark);
+  }
+  .status-container.error {
+    border-color: var(--color-error-dark);
+    background-color: rgba(255, 69, 58, 0.15);
+    color: var(--color-error-dark);
+  }
+  .status-container.success {
+    border-color: var(--color-success-dark);
+    background-color: rgba(52, 199, 89, 0.15);
+    color: var(--color-success-dark);
+  }
+  .status-container.warning {
+    border-color: var(--color-warning-dark);
+    background-color: rgba(255, 204, 0, 0.15);
+    color: var(--color-warning-dark);
+  }
+}
+
+/* --- Default Loaders --- */
+.defaults-loader .default-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+.defaults-loader button {
+  font-size: 0.9em;
+  padding: var(--spacing-xs) var(--spacing-sm); /* Smaller padding */
+}
+.defaults-loader button.secondary { /* Style for the refresh button */
+  margin-top: var(--spacing-sm);
+  background-color: transparent;
+  border: 1px solid var(--color-border-light);
+  color: var(--color-muted-light);
+}
+.defaults-loader button.secondary:hover {
+  background-color: var(--color-button-hover-background-light);
+  border-color: var(--color-muted-light);
+  color: var(--color-text-light);
+}
+@media (prefers-color-scheme: dark) {
+  .defaults-loader button.secondary {
+    border-color: var(--color-border-dark);
+    color: var(--color-muted-dark);
+  }
+  .defaults-loader button.secondary:hover {
+    background-color: var(--color-button-hover-background-dark);
+    border-color: var(--color-muted-dark);
+    color: var(--color-text-dark);
+  }
+}
+
+
+/* --- Input Area --- */
 .input-area .input-grid {
   display: grid;
   grid-template-columns: 1fr 1fr; /* Two equal columns */
-  gap: 1.5em; /* Space between columns */
-  margin-bottom: 1em;
+  gap: var(--spacing-lg); /* Increased gap */
+  margin-bottom: var(--spacing-lg);
 }
 
 .input-column label {
   display: block;
-  margin-bottom: 0.5em;
-  font-weight: bold;
-  text-align: left;
+  margin-bottom: var(--spacing-sm);
+  font-weight: 600; /* Slightly bolder labels */
+  font-size: 0.95em;
+  color: var(--color-muted-light);
+}
+@media (prefers-color-scheme: dark) {
+  .input-column label { color: var(--color-muted-dark); }
 }
 
 textarea {
-  width: 100%; /* Full width of column */
-  padding: 0.8em 1em;
-  border: 1px solid #555;
-  border-radius: 4px;
-  font-size: 0.95em;
-  font-family: inherit; /* Use app's font */
-  background-color: #333;
-  color: #eee;
-  box-sizing: border-box; /* Include padding/border in width */
-  resize: vertical; /* Allow vertical resize */
-  min-height: 200px; /* Minimum height */
+  min-height: 250px; /* Increased default height */
+  resize: vertical;
+  line-height: 1.5; /* Ensure consistent line height */
 }
 
 .analyze-button {
-  margin-top: 1em;
-  padding: 0.8em 1.5em;
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg); /* Larger padding */
   font-size: 1.1em;
+  font-weight: 600;
+  /* Primary button style */
+  background-color: var(--color-primary-light);
+  color: white;
+  border-color: var(--color-primary-light);
+}
+.analyze-button:hover {
+  background-color: var(--color-primary-hover-light);
+  border-color: var(--color-primary-hover-light);
+}
+.analyze-button:disabled {
+  background-color: var(--color-primary-light); /* Keep color but use opacity */
+  border-color: var(--color-primary-light);
+  color: white;
+  opacity: 0.6;
 }
 
-/* Analysis Results */
-.analysis-results h2, .chat-interface h2, .defaults-loader h2 {
-  margin-bottom: 0.8em;
+@media (prefers-color-scheme: dark) {
+  .analyze-button {
+    background-color: var(--color-primary-dark);
+    color: var(--color-background-dark); /* Dark text on light primary */
+    border-color: var(--color-primary-dark);
+  }
+  .analyze-button:hover {
+    background-color: var(--color-primary-hover-dark);
+    border-color: var(--color-primary-hover-dark);
+  }
+   .analyze-button:disabled {
+     background-color: var(--color-primary-dark);
+     border-color: var(--color-primary-dark);
+     color: var(--color-background-dark);
+   }
 }
 
-.analysis-content {
-  white-space: pre-wrap; /* Preserve whitespace and wrap lines */
-  word-wrap: break-word; /* Break long words */
-  text-align: left;
-  background-color: #282c34; /* Slightly different background */
-  padding: 1em;
-  border-radius: 4px;
-  font-family: monospace; /* Use monospace for potentially formatted output */
+/* --- Analysis Results --- */
+.analysis-results pre.analysis-content {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  background-color: var(--color-background-light); /* Match body background */
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--color-border-light);
+  font-family: Menlo, Monaco, Consolas, "Courier New", monospace; /* Monospace font */
   font-size: 0.9em;
-  line-height: 1.6;
-  max-height: 500px; /* Limit height and make scrollable */
+  line-height: 1.7; /* Slightly more line height for readability */
+  max-height: 60vh; /* Limit height relative to viewport */
   overflow-y: auto;
+  color: var(--color-text-light);
+}
+@media (prefers-color-scheme: dark) {
+  .analysis-results pre.analysis-content {
+    background-color: var(--color-background-dark);
+    border-color: var(--color-border-dark);
+    color: var(--color-text-dark);
+  }
 }
 
-/* Chat Interface */
+/* --- Chat Interface --- */
 .chat-history {
-  height: 400px; /* Fixed height */
-  overflow-y: auto; /* Enable scrolling */
-  border: 1px solid #444;
-  border-radius: 4px;
-  padding: 1em;
-  margin-bottom: 1em;
-  background-color: #282c34;
+  height: 450px; /* Increased height */
+  overflow-y: auto;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  background-color: var(--color-background-light); /* Match body background */
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md); /* Space between messages */
+}
+@media (prefers-color-scheme: dark) {
+  .chat-history {
+    border-color: var(--color-border-dark);
+    background-color: var(--color-background-dark);
+  }
 }
 
 .chat-message {
-  margin-bottom: 1em;
-  text-align: left;
+  max-width: 85%; /* Limit message width */
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--border-radius-lg);
+  line-height: 1.5;
 }
 
 .chat-message .sender-label {
-  font-weight: bold;
-  margin-right: 0.5em;
-  display: block; /* Put label on its own line */
-  margin-bottom: 0.2em;
-  color: #aaa;
+  display: block;
+  font-weight: 600;
+  font-size: 0.8em;
+  margin-bottom: var(--spacing-xs);
+  opacity: 0.8;
 }
 
- .chat-message.user .sender-label {
-    color: #88aaff; /* Different color for user */
- }
- .chat-message.ai .sender-label {
-    color: #7fdd7f; /* Different color for AI */
- }
-
-
-.chat-message .message-text {
-  white-space: pre-wrap; /* Preserve formatting */
+.chat-message pre.message-text {
+  margin: 0;
+  white-space: pre-wrap;
   word-wrap: break-word;
-  margin: 0; /* Remove default pre margin */
-  font-family: inherit; /* Use app font */
+  font-family: inherit; /* Use app font for chat */
   font-size: 1em;
-  line-height: 1.5;
+}
+
+/* User Message Styling */
+.chat-message.user {
+  background-color: var(--color-primary-light);
+  color: white;
+  margin-left: auto; /* Align user messages to the right */
+  border-bottom-right-radius: var(--border-radius-sm); /* Bubble tail effect */
+}
+.chat-message.user .sender-label {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* AI Message Styling */
+.chat-message.ai {
+  background-color: var(--color-button-background-light); /* Subtle background */
+  color: var(--color-text-light);
+  margin-right: auto; /* Align AI messages to the left */
+  border: 1px solid var(--color-border-light);
+  border-bottom-left-radius: var(--border-radius-sm); /* Bubble tail effect */
+}
+.chat-message.ai .sender-label {
+  color: var(--color-muted-light);
+}
+.chat-message.ai.loading { /* Style for AI thinking indicator */
+    font-style: italic;
+    color: var(--color-muted-light);
+    background-color: transparent;
+    border: none;
+}
+
+
+@media (prefers-color-scheme: dark) {
+  .chat-message.user {
+    background-color: var(--color-primary-dark);
+    color: var(--color-background-dark); /* Dark text on light primary */
+  }
+  .chat-message.user .sender-label {
+    color: rgba(26, 26, 26, 0.8);
+  }
+
+  .chat-message.ai {
+    background-color: var(--color-button-background-dark);
+    color: var(--color-text-dark);
+    border-color: var(--color-border-dark);
+  }
+  .chat-message.ai .sender-label {
+    color: var(--color-muted-dark);
+  }
+   .chat-message.ai.loading {
+     color: var(--color-muted-dark);
+   }
 }
 
 .chat-input-area {
   display: flex;
-  gap: 0.5em;
+  gap: var(--spacing-sm);
+  align-items: center; /* Align input and button vertically */
 }
 
 .chat-input-area input[type="text"] {
-  flex-grow: 1; /* Take available space */
-  margin: 0; /* Override default margins */
+  flex-grow: 1;
+  margin: 0; /* Remove any potential default margin */
 }
 
 .chat-input-area button {
-  margin: 0; /* Override default margins */
-  white-space: nowrap; /* Prevent button text wrapping */
+  white-space: nowrap;
+  /* Use primary style for send button */
+  background-color: var(--color-primary-light);
+  color: white;
+  border-color: var(--color-primary-light);
+}
+.chat-input-area button:hover {
+  background-color: var(--color-primary-hover-light);
+  border-color: var(--color-primary-hover-light);
+}
+.chat-input-area button:disabled {
+  background-color: var(--color-primary-light);
+  border-color: var(--color-primary-light);
+  color: white;
+  opacity: 0.6;
 }
 
-/* Defaults Loader */
-.defaults-loader .default-buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5em;
-    margin-bottom: 1em;
-}
-.defaults-loader button {
-    font-size: 0.9em;
-    padding: 0.5em 1em;
-}
-
-/* Status Area */
-.status-container {
-    margin-bottom: 1.5em;
-}
-.status {
-    margin: 0.5em 0; /* Tighter spacing */
+@media (prefers-color-scheme: dark) {
+  .chat-input-area button {
+    background-color: var(--color-primary-dark);
+    color: var(--color-background-dark);
+    border-color: var(--color-primary-dark);
+  }
+  .chat-input-area button:hover {
+    background-color: var(--color-primary-hover-dark);
+    border-color: var(--color-primary-hover-dark);
+  }
+   .chat-input-area button:disabled {
+     background-color: var(--color-primary-dark);
+     border-color: var(--color-primary-dark);
+     color: var(--color-background-dark);
+   }
 }
 
 
-/* Responsive adjustments (Example) */
+/* --- Responsive Adjustments --- */
 @media (max-width: 768px) {
+  h1 { font-size: 2em; }
+  h2 { font-size: 1.3em; }
+
   .input-area .input-grid {
-    grid-template-columns: 1fr; /* Stack columns on smaller screens */
+    grid-template-columns: 1fr; /* Stack columns */
+    gap: var(--spacing-md); /* Adjust gap for stacked layout */
   }
   textarea {
-    min-height: 150px;
+    min-height: 200px;
   }
   .chat-history {
-    height: 300px;
+    height: 350px;
   }
-}
-
-/* Light mode adjustments for new elements */
-@media (prefers-color-scheme: light) {
-  textarea {
-    background-color: #fff;
-    color: #333;
-    border-color: #ccc;
+  .chat-message {
+    max-width: 95%; /* Allow slightly wider messages on mobile */
   }
-  .analysis-content, .chat-history {
-    background-color: #f8f8f8;
-    border-color: #eee;
-  }
-   .chat-message .sender-label { color: #555; }
-   .chat-message.user .sender-label { color: #0056b3; }
-   .chat-message.ai .sender-label { color: #28a745; }
 }
