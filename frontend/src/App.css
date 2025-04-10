@@ -298,16 +298,18 @@ textarea {
 
 /* --- Chat Interface --- */
 .chat-history {
-  height: 450px; /* Increased height */
+  height: 450px;
   overflow-y: auto;
   border: 1px solid var(--color-border-light);
   border-radius: var(--border-radius-md);
   padding: var(--spacing-md);
   margin-bottom: var(--spacing-md);
-  background-color: var(--color-background-light); /* Match body background */
+  background-color: var(--color-background-light);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md); /* Space between messages */
+  gap: var(--spacing-md);
+  /* *** ADDED: Enable smooth scrolling via CSS *** */
+  scroll-behavior: smooth;
 }
 @media (prefers-color-scheme: dark) {
   .chat-history {
@@ -317,7 +319,7 @@ textarea {
 }
 
 .chat-message {
-  max-width: 85%; /* Limit message width */
+  max-width: 85%;
   padding: var(--spacing-sm) var(--spacing-md);
   border-radius: var(--border-radius-lg);
   line-height: 1.5;
@@ -335,23 +337,22 @@ textarea {
 .chat-message .message-text {
   margin: 0;
   word-wrap: break-word;
-  font-family: inherit; /* Use app font for chat */
+  font-family: inherit;
   font-size: 1em;
 }
-.chat-message .message-text span > *:first-child { margin-top: 0; } /* Adjust for span wrapper */
+.chat-message .message-text span > *:first-child { margin-top: 0; }
 .chat-message .message-text span > *:last-child { margin-bottom: 0; }
 .chat-message .message-text strong { font-weight: 600; }
 .chat-message .message-text em { font-style: italic; }
 .chat-message .message-text code {
   font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
-  background-color: rgba(0,0,0,0.08); /* Subtle background */
+  background-color: rgba(0,0,0,0.08);
   padding: 0.1em 0.3em;
   border-radius: var(--border-radius-sm);
   font-size: 0.9em;
 }
 .chat-message .message-text a {
   text-decoration: underline;
-  /* Color will be inherited based on user/ai message */
 }
 
 
@@ -359,8 +360,8 @@ textarea {
 .chat-message.user {
   background-color: var(--color-primary-light);
   color: white;
-  margin-left: auto; /* Align user messages to the right */
-  border-bottom-right-radius: var(--border-radius-sm); /* Bubble tail effect */
+  margin-left: auto;
+  border-bottom-right-radius: var(--border-radius-sm);
 }
 .chat-message.user .sender-label {
   color: rgba(255, 255, 255, 0.8);
@@ -369,37 +370,37 @@ textarea {
    background-color: rgba(255,255,255,0.2);
 }
 .chat-message.user .message-text a {
-   color: #fff; /* Ensure links are visible */
+   color: #fff;
    font-weight: 500;
 }
 
 
 /* AI Message Styling */
 .chat-message.ai {
-  background-color: var(--color-button-background-light); /* Subtle background */
+  background-color: var(--color-button-background-light);
   color: var(--color-text-light);
-  margin-right: auto; /* Align AI messages to the left */
+  margin-right: auto;
   border: 1px solid var(--color-border-light);
-  border-bottom-left-radius: var(--border-radius-sm); /* Bubble tail effect */
+  border-bottom-left-radius: var(--border-radius-sm);
 }
 .chat-message.ai .sender-label {
   color: var(--color-muted-light);
 }
-.chat-message.ai.loading { /* Style for AI thinking indicator */
+.chat-message.ai.loading {
     font-style: italic;
     color: var(--color-muted-light);
     background-color: transparent;
     border: none;
 }
 .chat-message.ai .message-text a {
-  color: var(--color-primary-light); /* Use primary color for links */
+  color: var(--color-primary-light);
 }
 
 
 @media (prefers-color-scheme: dark) {
   .chat-message.user {
     background-color: var(--color-primary-dark);
-    color: var(--color-background-dark); /* Dark text on light primary */
+    color: var(--color-background-dark);
   }
   .chat-message.user .sender-label {
     color: rgba(26, 26, 26, 0.8);
@@ -434,17 +435,16 @@ textarea {
 .chat-input-area {
   display: flex;
   gap: var(--spacing-sm);
-  align-items: center; /* Align input and button vertically */
+  align-items: center;
 }
 
 .chat-input-area input[type="text"] {
   flex-grow: 1;
-  margin: 0; /* Remove any potential default margin */
+  margin: 0;
 }
 
 .chat-input-area button {
   white-space: nowrap;
-  /* Use primary style for send button */
   background-color: var(--color-primary-light);
   color: white;
   border-color: var(--color-primary-light);
@@ -484,8 +484,8 @@ textarea {
   h2 { font-size: 1.3em; }
 
   .input-area .input-grid {
-    grid-template-columns: 1fr; /* Stack columns */
-    gap: var(--spacing-md); /* Adjust gap for stacked layout */
+    grid-template-columns: 1fr;
+    gap: var(--spacing-md);
   }
   textarea {
     min-height: 200px;
@@ -494,6 +494,6 @@ textarea {
     height: 350px;
   }
   .chat-message {
-    max-width: 95%; /* Allow slightly wider messages on mobile */
+    max-width: 95%;
   }
 }

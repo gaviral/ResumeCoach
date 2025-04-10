@@ -1,9 +1,9 @@
 // ResumeCoach/frontend/src/App.tsx
 import { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
-import ReactMarkdown from 'react-markdown'; // Import ReactMarkdown
-import remarkGfm from 'remark-gfm'; // Import remark-gfm for GitHub Flavored Markdown support
-import './App.css'; // Styles updated
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import './App.css';
 
 // --- Interfaces ---
 interface ApiError {
@@ -12,7 +12,7 @@ interface ApiError {
 }
 
 interface AnalysisResult {
-    analysis: string; // The structured text from the LLM (potentially markdown)
+    analysis: string;
 }
 
 interface ChatMessage {
@@ -50,7 +50,8 @@ function App() {
 
   // Refs for scrolling
   const analysisEndRef = useRef<null | HTMLDivElement>(null);
-  const chatEndRef = useRef<null | HTMLDivElement>(null);
+  // *** NEW: Ref for the chat history container itself ***
+  const chatHistoryRef = useRef<null | HTMLDivElement>(null);
 
   // Get API URL from environment variables
   const apiUrl = import.meta.env.VITE_API_URL;
@@ -66,15 +67,18 @@ function App() {
     localStorage.setItem(LOCAL_STORAGE_JD_KEY, jobDescriptionText);
   }, [jobDescriptionText]);
 
-  // Scroll to bottom of analysis/chat when content updates
+  // Scroll analysis into view when content updates
   useEffect(() => {
-    // Scroll analysis into view slightly differently now it's not a pre tag
     analysisEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [analysisResult]);
 
+  // *** UPDATED: Scroll chat history container to bottom when chatHistory changes ***
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [chatHistory]);
+    if (chatHistoryRef.current) {
+      // Set scrollTop to the maximum scroll height to scroll to the bottom
+      chatHistoryRef.current.scrollTop = chatHistoryRef.current.scrollHeight;
+    }
+  }, [chatHistory]); // Dependency: chatHistory
 
   // Fetch default items on mount
   useEffect(() => {
@@ -177,7 +181,7 @@ function App() {
           const formattedError = formatError(err);
           console.error("Error during analysis:", err);
           let specificError = { message: `Analysis failed: ${formattedError.message}`, status: formattedError.status };
-          if (formattedError.status === 503 || formattedError.message.toLowerCase().includes('api key')) { // Broader check for API key issues
+          if (formattedError.status === 503 || formattedError.message.toLowerCase().includes('api key')) {
               specificError.message = `Analysis failed: ${formattedError.message}. Please ensure the backend OpenAI API Key is configured correctly.`;
           }
           setError(specificError);
@@ -188,12 +192,13 @@ function App() {
 
   const handleChatSubmit = async () => {
       if (!apiUrl) { setError({ message: "API URL not configured." }); return; }
-      if (!chatInput.trim()) { return; } // Don't send empty messages
+      if (!chatInput.trim()) { return; }
       if (!analysisResult) { setError({ message: "Please run an analysis before starting chat." }); return; }
 
       const newUserMessage: ChatMessage = { sender: 'user', text: chatInput };
-      setChatHistory(prev => [...prev, newUserMessage]); // Show user message immediately
-      setChatInput(''); // Clear input field
+      // Update state *before* API call to trigger scroll effect immediately for user message
+      setChatHistory(prev => [...prev, newUserMessage]);
+      setChatInput('');
       setIsLoadingChat(true);
       clearStatus();
       console.log(`Sending chat request to: ${apiUrl}/chat`);
@@ -202,22 +207,24 @@ function App() {
           const response = await axios.post<{ answer: string }>(`${apiUrl}/chat`, {
               resume: resumeText,
               job_description: jobDescriptionText,
-              analysis_context: analysisResult, // Send the initial analysis as context
-              question: newUserMessage.text, // Send the user's question
+              analysis_context: analysisResult,
+              question: newUserMessage.text, // Use the text from the message we already added
           });
 
           const aiResponse: ChatMessage = { sender: 'ai', text: response.data.answer };
-          setChatHistory(prev => [...prev, aiResponse]); // Add AI response
+          // Add AI response, which will trigger the scroll effect again
+          setChatHistory(prev => [...prev, aiResponse]);
 
       } catch (err) {
           const formattedError = formatError(err);
           console.error("Error during chat:", err);
           const errorText = `Sorry, I encountered an error: ${formattedError.message}`;
           const errorResponse: ChatMessage = { sender: 'ai', text: errorText };
-          setChatHistory(prev => [...prev, errorResponse]); // Show error in chat
+          // Add error response, triggering scroll effect
+          setChatHistory(prev => [...prev, errorResponse]);
 
           let specificError = { message: `Chat failed: ${formattedError.message}`, status: formattedError.status };
-           if (formattedError.status === 503 || formattedError.message.toLowerCase().includes('api key')) { // Broader check
+           if (formattedError.status === 503 || formattedError.message.toLowerCase().includes('api key')) {
               specificError.message = `Chat failed: ${formattedError.message}. Please ensure the backend OpenAI API Key is configured correctly.`;
           }
           setError(specificError);
@@ -235,13 +242,13 @@ function App() {
       isLoading ? "loading" : "",
       error ? "error" : "",
       !error && statusMessage ? "success" : "",
-      !apiUrl ? "warning" : "" // Warning takes precedence if API URL is missing
-  ].filter(Boolean).join(" "); // Filter out empty strings and join
+      !apiUrl ? "warning" : ""
+  ].filter(Boolean).join(" ");
 
   // --- Render ---
   return (
       <div className="App">
-          <h1>Resume Coach</h1> {/* Simplified title */}
+          <h1>Resume Coach</h1>
 
           {/* --- Status/Error Display --- */}
           <div className={statusContainerClasses}>
@@ -285,7 +292,7 @@ function App() {
                           value={resumeText}
                           onChange={(e) => setResumeText(e.target.value)}
                           disabled={isLoading}
-                          rows={15} // You can adjust this based on the new min-height in CSS
+                          rows={15}
                       />
                   </div>
                   <div className="input-column">
@@ -297,7 +304,7 @@ function App() {
                           value={jobDescriptionText}
                           onChange={(e) => setJobDescriptionText(e.target.value)}
                           disabled={isLoading}
-                          rows={15} // You can adjust this based on the new min-height in CSS
+                          rows={15}
                       />
                   </div>
               </div>
@@ -314,26 +321,26 @@ function App() {
           {analysisResult && (
               <div className="card analysis-results">
                   <h2>Analysis Results</h2>
-                  {/* Use ReactMarkdown to render the analysis result */}
-                  <div className="analysis-content"> {/* Add a wrapper div for styling */}
+                  <div className="analysis-content">
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
                           {analysisResult}
                       </ReactMarkdown>
                   </div>
-                  <div ref={analysisEndRef} /> {/* Scroll target */}
+                  {/* *** REMOVED chatEndRef div from here *** */}
+                  <div ref={analysisEndRef} /> {/* Keep analysisEndRef for scrolling analysis */}
               </div>
           )}
 
           {/* --- Chat Interface --- */}
-          {analysisResult && ( // Only show chat after analysis
+          {analysisResult && (
               <div className="card chat-interface">
                   <h2>Follow-up Chat</h2>
-                  <div className="chat-history">
+                  {/* *** ADDED ref={chatHistoryRef} here *** */}
+                  <div className="chat-history" ref={chatHistoryRef}>
                       {chatHistory.map((msg, index) => (
                           <div key={index} className={`chat-message ${msg.sender}`}>
                               <span className="sender-label">{msg.sender === 'user' ? 'You' : 'AI Coach'}:</span>
-                              {/* Also render chat messages with ReactMarkdown in case AI uses it */}
-                              <div className="message-text"> {/* Wrapper div */}
+                              <div className="message-text">
                                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: 'span' }}>
                                     {msg.text}
                                 </ReactMarkdown>
@@ -341,7 +348,7 @@ function App() {
                           </div>
                       ))}
                       {isLoadingChat && <div className="chat-message ai loading"><i>AI Coach is thinking...</i></div>}
-                       <div ref={chatEndRef} /> {/* Scroll target */}
+                       {/* *** REMOVED chatEndRef div from here *** */}
                   </div>
                   <form className="chat-input-area" onSubmit={(e) => { e.preventDefault(); handleChatSubmit(); }}>
                       <input
