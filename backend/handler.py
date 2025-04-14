@@ -8,7 +8,14 @@ import logging
 
 # --- LangChain & OpenAI Imports ---
 from langchain_openai import ChatOpenAI
-from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
+from langchain.prompts import (
+    ChatPromptTemplate,
+    SystemMessagePromptTemplate,
+    HumanMessagePromptTemplate,
+    MessagesPlaceholder
+)
+from langchain.schema import HumanMessage, AIMessage
+
 from langchain.schema.output_parser import StrOutputParser
 from langchain.schema.runnable import RunnablePassthrough
 
@@ -223,7 +230,7 @@ def analyze_resume(event):
         return create_response(500, {'error': 'Internal server error during analysis'})
 
 def chat_follow_up(event):
-    """Handles follow-up chat questions based on the analysis context."""
+    """Handles follow-up chat questions based on the analysis context AND chat history."""
     if not llm:
         logger.error("LLM not available for chat. Check OPENAI_API_KEY.")
         return create_response(503, {'error': 'LLM service is unavailable. Check API Key configuration.'})
@@ -232,46 +239,82 @@ def chat_follow_up(event):
         body = json.loads(event.get('body', '{}'))
         resume_text = body.get('resume')
         job_description_text = body.get('job_description')
-        analysis_context = body.get('analysis_context') # The initial analysis result
+        analysis_context = body.get('analysis_context')
         question = body.get('question')
+        chat_history_raw = body.get('chat_history', []) # Default to empty list
 
-        if not all([resume_text, job_description_text, analysis_context, question]):
-            logger.warning("Chat request missing required context or question.")
-            return create_response(400, {'error': 'Missing required fields: "resume", "job_description", "analysis_context", "question".'})
-
-        logger.info(f"Starting chat follow-up for question: '{question}'")
-
-        # --- LangChain Prompt Template for Chat ---
-        # Provide context to the LLM for the follow-up
-        system_template = """You are the Resume Coach AI, continuing a conversation with a user about their resume and a job description.
-        You have already provided an initial analysis. Now, answer the user's follow-up question based *only* on the information contained within the resume, the job description, and your previous analysis.
-        Do not invent new information or make assumptions beyond this context. Keep your answer concise and directly related to the question.
-
-        Context:
-        --- Job Description ---
-        {job_description}
-        --- Resume ---
-        {resume}
-        --- Previous Analysis You Provided ---
-        {analysis_context}
-        --- End Context ---
-
-        Now, answer the user's question.
-        User Question: {question}"""
-
-        prompt = ChatPromptTemplate.from_messages([
-            SystemMessagePromptTemplate.from_template(system_template),
-        ])
-
-        # --- LangChain Chain ---
-        chain = prompt | llm | StrOutputParser()
-
-        # --- Invoke Chain ---
-        logger.info("Invoking LLM chain for chat...")
-        answer = chain.invoke({
+        # Basic validation for required fields (excluding history)
+        required_fields = {
             "resume": resume_text,
             "job_description": job_description_text,
             "analysis_context": analysis_context,
+            "question": question
+        }
+        if not all(required_fields.values()):
+            missing = [k for k, v in required_fields.items() if not v]
+            logger.warning(f"Chat request missing required fields: {missing}")
+            return create_response(400, {'error': f'Missing required fields: {", ".join(missing)}.'})
+
+        # Validate history format
+        if not isinstance(chat_history_raw, list):
+             logger.warning(f"Received chat_history is not a list: {type(chat_history_raw)}")
+             return create_response(400, {'error': 'Invalid format for chat_history, expected a list.'})
+
+        logger.info(f"Starting chat follow-up for question: '{question}' with {len(chat_history_raw)} history messages.")
+
+        # Convert frontend history to LangChain messages
+        langchain_chat_history = []
+        for msg in chat_history_raw:
+            sender = msg.get('sender')
+            text = msg.get('text')
+            if sender == 'user' and text:
+                langchain_chat_history.append(HumanMessage(content=text))
+            elif sender == 'ai' and text:
+                langchain_chat_history.append(AIMessage(content=text))
+            else:
+                # Log and skip malformed messages
+                logger.warning(f"Skipping invalid message in chat_history: {msg}")
+
+        # --- LangChain Prompt Template for Chat (Updated for History) ---
+        # Updated system prompt and structure
+        system_template = """You are the Resume Coach AI, continuing a conversation with a user about their resume and a job description.
+You have already provided an initial analysis. Now, answer the user's current follow-up question based on the information contained within the resume, the job description, your previous analysis, AND the preceding chat history provided below.
+Do not invent new information or make assumptions beyond this context. Keep your answer concise and directly related to the current question.
+
+Static Context:
+--- Job Description ---
+{job_description}
+--- Resume ---
+{resume}
+--- Initial Analysis You Provided ---
+{analysis_context}
+--- End Static Context ---
+
+Chat History (User questions and your previous answers):"""
+        # Note: The actual history will be inserted by MessagesPlaceholder
+
+        prompt = ChatPromptTemplate.from_messages([
+            SystemMessagePromptTemplate.from_template(system_template),
+            # This placeholder will insert the history messages correctly formatted
+            MessagesPlaceholder(variable_name="chat_history"),
+            # This is for the *current* user question
+            HumanMessagePromptTemplate.from_template("{question}")
+        ])
+
+        # --- LangChain Chain (Structure remains the same) ---
+        chain = prompt | llm | StrOutputParser()
+
+        # --- Invoke Chain (Update input dictionary for history) ---
+        logger.info("Invoking LLM chain for chat with history...")
+        # Pass history to invoke
+        answer = chain.invoke({
+            # Still needed for the System Prompt context
+            "resume": resume_text,
+            "job_description": job_description_text,
+            "analysis_context": analysis_context,
+            # Pass the converted history list
+            "chat_history": langchain_chat_history,
+            # Pass the current question
             "question": question
         })
         logger.info("LLM chat response generated successfully.")

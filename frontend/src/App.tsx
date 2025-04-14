@@ -50,7 +50,6 @@ function App() {
 
   // Refs for scrolling
   const analysisEndRef = useRef<null | HTMLDivElement>(null);
-  // *** NEW: Ref for the chat history container itself ***
   const chatHistoryRef = useRef<null | HTMLDivElement>(null);
 
   // Get API URL from environment variables
@@ -72,13 +71,12 @@ function App() {
     analysisEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [analysisResult]);
 
-  // *** UPDATED: Scroll chat history container to bottom when chatHistory changes ***
+  // Scroll chat history container to bottom when chatHistory changes
   useEffect(() => {
     if (chatHistoryRef.current) {
-      // Set scrollTop to the maximum scroll height to scroll to the bottom
       chatHistoryRef.current.scrollTop = chatHistoryRef.current.scrollHeight;
     }
-  }, [chatHistory]); // Dependency: chatHistory
+  }, [chatHistory]);
 
   // Fetch default items on mount
   useEffect(() => {
@@ -196,7 +194,9 @@ function App() {
       if (!analysisResult) { setError({ message: "Please run an analysis before starting chat." }); return; }
 
       const newUserMessage: ChatMessage = { sender: 'user', text: chatInput };
-      // Update state *before* API call to trigger scroll effect immediately for user message
+      const historyToSend = [...chatHistory];
+
+      // Update state *before* API call for immediate UI update
       setChatHistory(prev => [...prev, newUserMessage]);
       setChatInput('');
       setIsLoadingChat(true);
@@ -208,7 +208,8 @@ function App() {
               resume: resumeText,
               job_description: jobDescriptionText,
               analysis_context: analysisResult,
-              question: newUserMessage.text, // Use the text from the message we already added
+              question: newUserMessage.text, // The current question
+              chat_history: historyToSend,
           });
 
           const aiResponse: ChatMessage = { sender: 'ai', text: response.data.answer };
@@ -326,7 +327,6 @@ function App() {
                           {analysisResult}
                       </ReactMarkdown>
                   </div>
-                  {/* *** REMOVED chatEndRef div from here *** */}
                   <div ref={analysisEndRef} /> {/* Keep analysisEndRef for scrolling analysis */}
               </div>
           )}
@@ -335,7 +335,6 @@ function App() {
           {analysisResult && (
               <div className="card chat-interface">
                   <h2>Follow-up Chat</h2>
-                  {/* *** ADDED ref={chatHistoryRef} here *** */}
                   <div className="chat-history" ref={chatHistoryRef}>
                       {chatHistory.map((msg, index) => (
                           <div key={index} className={`chat-message ${msg.sender}`}>
@@ -348,7 +347,6 @@ function App() {
                           </div>
                       ))}
                       {isLoadingChat && <div className="chat-message ai loading"><i>AI Coach is thinking...</i></div>}
-                       {/* *** REMOVED chatEndRef div from here *** */}
                   </div>
                   <form className="chat-input-area" onSubmit={(e) => { e.preventDefault(); handleChatSubmit(); }}>
                       <input
