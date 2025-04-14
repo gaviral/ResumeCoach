@@ -45,16 +45,26 @@ export class InfrastructureStack extends cdk.Stack {
     });
     // -------------------------------------------
 
-    // --- Database (No changes) ---
-    const dynamoTable = new dynamodb.Table(this, 'ResumeCoachItemsTable', {
-      tableName: 'ResumeCoachItems',
+    // --- Database (Items Table for Defaults) ---
+    const itemsTable = new dynamodb.Table(this, 'ResumeCoachItemsTable', {
+      tableName: 'ResumeCoachItems', // Keep original name for defaults
       partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: RemovalPolicy.DESTROY,
-      timeToLiveAttribute: 'ttl',
+      removalPolicy: RemovalPolicy.DESTROY, // Suitable for dev/demo
+      // timeToLiveAttribute: 'ttl', // TTL not strictly needed for defaults unless you want them to expire
     });
 
-    // --- Backend Lambda (No changes related to domain) ---
+    // *** ADDED: Sessions Table ***
+    const sessionsTable = new dynamodb.Table(this, 'ResumeCoachSessionsTable', {
+        tableName: 'ResumeCoachSessions',
+        partitionKey: { name: 'sessionId', type: dynamodb.AttributeType.STRING }, // Use sessionId as PK
+        billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+        removalPolicy: RemovalPolicy.DESTROY, // Or RETAIN for production
+        timeToLiveAttribute: 'ttl', // Add TTL for automatic session cleanup
+    });
+    // *** END ADDED ***
+
+    // --- Backend Lambda (Update Environment & Permissions) ---
     const backendLambda = new lambda.Function(this, 'ResumeCoachBackendLambda', {
       runtime: lambda.Runtime.PYTHON_3_11,
       handler: 'handler.handler',
@@ -70,24 +80,32 @@ export class InfrastructureStack extends cdk.Stack {
         },
       }),
       environment: {
-        TABLE_NAME: dynamoTable.tableName,
+        // *** UPDATED: Rename ITEMS table env var ***
+        ITEMS_TABLE_NAME: itemsTable.tableName,
+        // *** ADDED: Sessions Table Env Var ***
+        SESSIONS_TABLE_NAME: sessionsTable.tableName,
+        // *** END ADDED ***
         LOG_LEVEL: 'INFO',
         OPENAI_API_KEY: 'CONFIGURE_IN_LAMBDA_CONSOLE', // Remember to set manually
       },
-      timeout: Duration.seconds(60),
-      memorySize: 256,
+      timeout: Duration.seconds(60), // Keep timeout reasonable for LLM calls + DDB I/O
+      memorySize: 256, // May need increase depending on memory usage with state
       functionName: 'ResumeCoachBackendHandler',
-      description: 'Handles ResumeCoach analysis, chat, and default item fetching.',
+      description: 'Handles ResumeCoach analysis, chat, defaults, and session state.', // Updated description
       architecture: lambda.Architecture.ARM_64,
     });
-    dynamoTable.grantReadWriteData(backendLambda);
+    // Grant permissions to both tables
+    itemsTable.grantReadData(backendLambda); // Only needs read for defaults
+    // *** ADDED: Grant R/W to Sessions Table ***
+    sessionsTable.grantReadWriteData(backendLambda);
+    // *** END ADDED ***
 
-    // --- API Gateway (No changes related to domain) ---
+    // --- API Gateway (No changes needed here for session logic) ---
     const httpApi = new apigwv2.HttpApi(this, 'ResumeCoachHttpApi', {
       apiName: 'ResumeCoachHttpApi',
       description: 'HTTP API for ResumeCoach analysis, chat, and defaults.',
       corsPreflight: {
-        allowHeaders: ['Content-Type', 'X-Amz-Date', 'Authorization', 'X-Api-Key', 'X-Amz-Security-Token', 'X-Amz-User-Agent'],
+        allowHeaders: ['Content-Type', 'X-Amz-Date', 'Authorization', 'X-Api-Key', 'X-Amz-Security-Token', 'X-Amz-User-Agent', 'X-Session-Id'], // Added X-Session-Id potentially
         allowMethods: [
           apigwv2.CorsHttpMethod.OPTIONS, apigwv2.CorsHttpMethod.GET,
           apigwv2.CorsHttpMethod.POST,
@@ -97,6 +115,9 @@ export class InfrastructureStack extends cdk.Stack {
         // allowOrigins: [`https://${siteDomain}`],
         allowOrigins: ['*'], // Keep as '*' for now, restrict later if needed
         maxAge: Duration.days(1),
+        // *** ADDED: Expose Session ID Header ***
+        exposeHeaders: ['X-Session-Id'],
+        // *** END ADDED ***
       },
     });
     const lambdaIntegration = new HttpLambdaIntegration('LambdaIntegration', backendLambda);
@@ -122,9 +143,9 @@ export class InfrastructureStack extends cdk.Stack {
     });
     frontendBucket.grantRead(originAccessIdentity);
 
-    // --- 3. Update CloudFront Distribution ---
+    // --- CloudFront Distribution (No changes needed here for session logic) ---
     const distribution = new cloudfront.Distribution(this, 'ResumeCoachDistribution', {
-      comment: `CloudFront distribution for ${siteDomain}`, // Updated comment
+      comment: `CloudFront distribution for ${siteDomain}`,
       defaultBehavior: {
         origin: new origins.S3Origin(frontendBucket, { originAccessIdentity }),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
@@ -134,47 +155,38 @@ export class InfrastructureStack extends cdk.Stack {
         cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
       },
       defaultRootObject: 'index.html',
-      priceClass: cloudfront.PriceClass.PRICE_CLASS_100, // Use cheapest edge locations
+      priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
        errorResponses:[
          { httpStatus: 403, responseHttpStatus: 200, responsePagePath: '/index.html', ttl: Duration.minutes(0) },
          { httpStatus: 404, responseHttpStatus: 200, responsePagePath: '/index.html', ttl: Duration.minutes(0) }
        ],
-       minimumProtocolVersion: cloudfront.SecurityPolicyProtocol.TLS_V1_2_2021, // Recommended security policy
-
-       // --- Add Custom Domain Configuration ---
-       domainNames: [siteDomain], // The custom domain
-       certificate: siteCertificate, // Reference the ACM certificate in us-east-1
-       // ---------------------------------------
+       minimumProtocolVersion: cloudfront.SecurityPolicyProtocol.TLS_V1_2_2021,
+       domainNames: [siteDomain],
+       certificate: siteCertificate,
     });
-    // -------------------------------------------
 
     // --- S3 Bucket Deployment (No changes) ---
-    // Deploys contents of frontend/dist to the S3 bucket
     new s3deploy.BucketDeployment(this, 'DeployReactApp', {
       sources: [s3deploy.Source.asset(path.join(__dirname, '../../frontend/dist'))],
       destinationBucket: frontendBucket,
-      distribution: distribution, // Invalidate CloudFront cache on deployment
-      distributionPaths: ['/*'], // Invalidate all paths
-      prune: true, // Remove old files
+      distribution: distribution,
+      distributionPaths: ['/*'],
+      prune: true,
     });
 
-    // --- 4. Create Route 53 Alias Record ---
-    // Points coach.aviralgarg.com to the CloudFront distribution
+    // --- Route 53 Alias Record (No changes) ---
     new route53.ARecord(this, 'SiteAliasRecord', {
-      recordName: siteDomain, // coach.aviralgarg.com
-      zone: hostedZone,       // Your aviralgarg.com hosted zone
+      recordName: siteDomain,
+      zone: hostedZone,
       target: route53.RecordTarget.fromAlias(new targets.CloudFrontTarget(distribution)),
     });
-    // AAAA record for IPv6 is implicitly handled by CloudFrontTarget
-    // -------------------------------------------
 
     // --- Stack Outputs ---
     new cdk.CfnOutput(this, 'ApiGatewayUrl', {
       value: httpApi.apiEndpoint,
       description: 'The base URL of the API Gateway endpoint (us-west-2)',
-      // exportName: 'ResumeCoachApiEndpoint', // Optional export
     });
-    new cdk.CfnOutput(this, 'CloudFrontDomainNameOutput', { // Renamed original output
+    new cdk.CfnOutput(this, 'CloudFrontDomainNameOutput', {
         value: distribution.distributionDomainName,
         description: 'The *.cloudfront.net domain name of the distribution',
     });
@@ -182,11 +194,15 @@ export class InfrastructureStack extends cdk.Stack {
       value: frontendBucket.bucketName,
       description: 'The name of the S3 bucket hosting the frontend',
     });
-    // --- Add Custom Domain Output ---
-    new cdk.CfnOutput(this, 'CustomDomainUrlOutput', { // New output
+    new cdk.CfnOutput(this, 'CustomDomainUrlOutput', {
         value: `https://${siteDomain}`,
         description: 'The custom domain URL for the application',
     });
-    // --------------------------------
+    // *** ADDED: Output Sessions Table Name ***
+    new cdk.CfnOutput(this, 'SessionsTableNameOutput', {
+        value: sessionsTable.tableName,
+        description: 'Name of the DynamoDB table storing session state',
+    });
+    // *** END ADDED ***
   }
 }

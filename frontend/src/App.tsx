@@ -1,6 +1,6 @@
 // ResumeCoach/frontend/src/App.tsx
 import { useState, useEffect, useCallback, useRef } from 'react';
-import axios from 'axios';
+import axios, { AxiosResponse } from 'axios'; // Import AxiosResponse
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import './App.css';
@@ -11,8 +11,10 @@ interface ApiError {
     status?: number;
 }
 
+// Updated AnalysisResult interface to expect sessionId
 interface AnalysisResult {
     analysis: string;
+    sessionId: string; // Expect sessionId from /analyze response body
 }
 
 interface ChatMessage {
@@ -33,6 +35,9 @@ interface DefaultItemContent {
 // --- Constants ---
 const LOCAL_STORAGE_RESUME_KEY = 'resumeCoach_resumeText';
 const LOCAL_STORAGE_JD_KEY = 'resumeCoach_jobDescriptionText';
+// Use sessionStorage for sessionId - it clears when the tab/browser closes
+const SESSION_STORAGE_SESSION_ID_KEY = 'resumeCoach_sessionId';
+
 
 function App() {
   // --- State Variables ---
@@ -41,6 +46,8 @@ function App() {
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState<string>('');
+  // Add state for session ID, initialize from sessionStorage
+  const [sessionId, setSessionId] = useState<string | null>(() => sessionStorage.getItem(SESSION_STORAGE_SESSION_ID_KEY));
   const [isLoadingAnalysis, setIsLoadingAnalysis] = useState<boolean>(false);
   const [isLoadingChat, setIsLoadingChat] = useState<boolean>(false);
   const [isLoadingDefaults, setIsLoadingDefaults] = useState<boolean>(false);
@@ -78,9 +85,27 @@ function App() {
     }
   }, [chatHistory]);
 
+  // Effect to save session ID to sessionStorage
+  useEffect(() => {
+    if (sessionId) {
+      sessionStorage.setItem(SESSION_STORAGE_SESSION_ID_KEY, sessionId);
+      console.log("Session ID saved:", sessionId);
+    } else {
+      sessionStorage.removeItem(SESSION_STORAGE_SESSION_ID_KEY);
+      console.log("Session ID removed from storage.");
+    }
+  }, [sessionId]);
+
+
   // Fetch default items on mount
   useEffect(() => {
     fetchDefaultItems();
+    // Check if session ID exists on load, maybe show a message?
+    if (sessionId) {
+        setStatusMessage(`Existing session detected: ${sessionId}. You can continue chatting or start a new analysis.`);
+        // We don't automatically load the analysis/history here,
+        // user needs to interact or start new analysis.
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiUrl]); // Dependency: apiUrl
 
@@ -107,22 +132,20 @@ function App() {
   // --- API Call Functions ---
 
   const fetchDefaultItems = useCallback(async () => {
-      if (!apiUrl) {
-          setError({ message: "API URL is not configured." });
-          return;
-      }
+      if (!apiUrl) { setError({ message: "API URL is not configured." }); return; }
       setIsLoadingDefaults(true);
       clearStatus();
       console.log(`Fetching default items from: ${apiUrl}/items`);
       try {
           const response = await axios.get<DefaultItem[]>(`${apiUrl}/items`);
           setDefaultItems(response.data || []);
-          setStatusMessage('Default examples list loaded.');
+          // Don't overwrite session status message here
+          // setStatusMessage('Default examples list loaded.');
       } catch (err) {
           const formattedError = formatError(err);
           console.error("Error fetching default items:", err);
           setError({ message: `Failed to fetch default items: ${formattedError.message}`, status: formattedError.status });
-          setDefaultItems([]); // Clear defaults on error
+          setDefaultItems([]);
       } finally {
           setIsLoadingDefaults(false);
       }
@@ -130,7 +153,7 @@ function App() {
 
   const loadDefaultContent = async (id: string, type: 'resume' | 'job_description') => {
       if (!apiUrl) { setError({ message: "API URL not configured." }); return; }
-      setIsLoadingDefaults(true); // Reuse loading state
+      setIsLoadingDefaults(true);
       clearStatus();
       console.log(`Loading content for default item ID: ${id}`);
       try {
@@ -164,17 +187,25 @@ function App() {
 
       setIsLoadingAnalysis(true);
       clearStatus();
-      setAnalysisResult(null); // Clear previous analysis
-      setChatHistory([]); // Clear previous chat
+      setAnalysisResult(null);
+      setChatHistory([]);
+      // Clear previous session ID on new analysis
+      setSessionId(null);
       console.log(`Sending analysis request to: ${apiUrl}/analyze`);
 
       try {
-          const response = await axios.post<AnalysisResult>(`${apiUrl}/analyze`, {
+          // Expect AnalysisResult type (includes sessionId)
+          const response: AxiosResponse<AnalysisResult> = await axios.post(`${apiUrl}/analyze`, {
               resume: resumeText,
               job_description: jobDescriptionText,
           });
+
           setAnalysisResult(response.data.analysis);
-          setStatusMessage("Analysis complete.");
+          // Store the new session ID from response body
+          setSessionId(response.data.sessionId);
+          setStatusMessage(`Analysis complete. Session started: ${response.data.sessionId}`);
+          console.log("Received session ID:", response.data.sessionId);
+
       } catch (err) {
           const formattedError = formatError(err);
           console.error("Error during analysis:", err);
@@ -183,6 +214,7 @@ function App() {
               specificError.message = `Analysis failed: ${formattedError.message}. Please ensure the backend OpenAI API Key is configured correctly.`;
           }
           setError(specificError);
+          setSessionId(null); // Clear session on analysis error
       } finally {
           setIsLoadingAnalysis(false);
       }
@@ -191,44 +223,50 @@ function App() {
   const handleChatSubmit = async () => {
       if (!apiUrl) { setError({ message: "API URL not configured." }); return; }
       if (!chatInput.trim()) { return; }
-      if (!analysisResult) { setError({ message: "Please run an analysis before starting chat." }); return; }
+      // Check for sessionId AND analysisResult (analysisResult implies a session should exist)
+      if (!analysisResult || !sessionId) {
+          setError({ message: "Please run an analysis to start or continue a chat session." });
+          return;
+      }
 
       const newUserMessage: ChatMessage = { sender: 'user', text: chatInput };
-      const historyToSend = [...chatHistory];
 
-      // Update state *before* API call for immediate UI update
+      // Update UI immediately
       setChatHistory(prev => [...prev, newUserMessage]);
       setChatInput('');
       setIsLoadingChat(true);
       clearStatus();
-      console.log(`Sending chat request to: ${apiUrl}/chat`);
+      console.log(`Sending chat request to: ${apiUrl}/chat for session: ${sessionId}`);
 
       try {
+           // Send only question and sessionId
           const response = await axios.post<{ answer: string }>(`${apiUrl}/chat`, {
-              resume: resumeText,
-              job_description: jobDescriptionText,
-              analysis_context: analysisResult,
-              question: newUserMessage.text, // The current question
-              chat_history: historyToSend,
+              question: newUserMessage.text,
+              sessionId: sessionId, // Send the current session ID
           });
 
           const aiResponse: ChatMessage = { sender: 'ai', text: response.data.answer };
-          // Add AI response, which will trigger the scroll effect again
           setChatHistory(prev => [...prev, aiResponse]);
 
       } catch (err) {
           const formattedError = formatError(err);
           console.error("Error during chat:", err);
-          const errorText = `Sorry, I encountered an error: ${formattedError.message}`;
+          let errorText = `Sorry, I encountered an error: ${formattedError.message}`;
+          // Check if session expired (404 error from backend)
+          if (formattedError.status === 404) {
+              errorText = "Your session may have expired or was not found. Please start a new analysis.";
+              setSessionId(null); // Clear expired/invalid session ID
+              setAnalysisResult(null); // Clear analysis to hide chat interface
+              setChatHistory([]); // Clear chat history display
+          }
           const errorResponse: ChatMessage = { sender: 'ai', text: errorText };
-          // Add error response, triggering scroll effect
-          setChatHistory(prev => [...prev, errorResponse]);
+          setChatHistory(prev => [...prev, errorResponse]); // Show error in chat
 
           let specificError = { message: `Chat failed: ${formattedError.message}`, status: formattedError.status };
            if (formattedError.status === 503 || formattedError.message.toLowerCase().includes('api key')) {
               specificError.message = `Chat failed: ${formattedError.message}. Please ensure the backend OpenAI API Key is configured correctly.`;
           }
-          setError(specificError);
+          setError(specificError); // Also show error in status bar
       } finally {
           setIsLoadingChat(false);
       }
@@ -242,7 +280,7 @@ function App() {
       showStatusContainer ? "visible" : "",
       isLoading ? "loading" : "",
       error ? "error" : "",
-      !error && statusMessage ? "success" : "",
+      !error && statusMessage ? "success" : "", // Show session status as success for now
       !apiUrl ? "warning" : ""
   ].filter(Boolean).join(" ");
 
@@ -292,7 +330,7 @@ function App() {
                           placeholder="Paste your full resume text here..."
                           value={resumeText}
                           onChange={(e) => setResumeText(e.target.value)}
-                          disabled={isLoading}
+                          disabled={isLoadingAnalysis} // Only disable during analysis
                           rows={15}
                       />
                   </div>
@@ -304,35 +342,39 @@ function App() {
                           placeholder="Paste the target job description text here..."
                           value={jobDescriptionText}
                           onChange={(e) => setJobDescriptionText(e.target.value)}
-                          disabled={isLoading}
+                          disabled={isLoadingAnalysis} // Only disable during analysis
                           rows={15}
                       />
                   </div>
               </div>
               <button
                   onClick={handleAnalyze}
-                  disabled={isLoading || !apiUrl || !resumeText.trim() || !jobDescriptionText.trim()}
+                  disabled={isLoadingAnalysis || !apiUrl || !resumeText.trim() || !jobDescriptionText.trim()}
                   className="analyze-button"
               >
-                  {isLoadingAnalysis ? 'Analyzing...' : 'Analyze Resume vs Job Description'}
+                  {isLoadingAnalysis ? 'Analyzing...' : 'Analyze Resume & Start Session'}
               </button>
           </div>
 
           {/* --- Analysis Results --- */}
+          {/* Show analysis result if it exists (even if session expired, show last known analysis) */}
           {analysisResult && (
               <div className="card analysis-results">
                   <h2>Analysis Results</h2>
+                   {/* Optionally show session ID */}
+                   {sessionId && <p style={{fontSize: '0.8em', color: 'grey', marginTop: '-10px', marginBottom: '10px'}}>Session ID: {sessionId}</p>}
                   <div className="analysis-content">
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
                           {analysisResult}
                       </ReactMarkdown>
                   </div>
-                  <div ref={analysisEndRef} /> {/* Keep analysisEndRef for scrolling analysis */}
+                  <div ref={analysisEndRef} />
               </div>
           )}
 
           {/* --- Chat Interface --- */}
-          {analysisResult && (
+          {/* Show chat interface only if analysisResult AND sessionId exist */}
+          {analysisResult && sessionId && (
               <div className="card chat-interface">
                   <h2>Follow-up Chat</h2>
                   <div className="chat-history" ref={chatHistoryRef}>
@@ -355,9 +397,9 @@ function App() {
                           placeholder="Ask a follow-up question (e.g., 'Suggest improvements for...') "
                           value={chatInput}
                           onChange={(e) => setChatInput(e.target.value)}
-                          disabled={isLoadingChat || !apiUrl}
+                          disabled={isLoadingChat || !apiUrl || !sessionId} // Disable if no session
                       />
-                      <button type="submit" disabled={isLoadingChat || !apiUrl || !chatInput.trim()}>
+                      <button type="submit" disabled={isLoadingChat || !apiUrl || !chatInput.trim() || !sessionId}>
                           Send
                       </button>
                   </form>
