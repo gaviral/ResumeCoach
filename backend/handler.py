@@ -15,9 +15,12 @@ from langchain.prompts import (
     MessagesPlaceholder
 )
 from langchain.schema import HumanMessage, AIMessage
-
 from langchain.schema.output_parser import StrOutputParser
 from langchain.schema.runnable import RunnablePassthrough
+# NOTE: We are *not* importing ConversationBufferWindowMemory here
+# because we are simulating its effect via list truncation in this stateless setup.
+# We are using a windowed history of the last 5 turns (5 user + 5 AI = 10 messages total)
+# We are doing this because we are using AWS Lambda that are stateless.
 
 # --- Configuration ---
 
@@ -230,7 +233,7 @@ def analyze_resume(event):
         return create_response(500, {'error': 'Internal server error during analysis'})
 
 def chat_follow_up(event):
-    """Handles follow-up chat questions based on the analysis context AND chat history."""
+    """Handles follow-up chat questions based on analysis context AND a WINDOWED chat history."""
     if not llm:
         logger.error("LLM not available for chat. Check OPENAI_API_KEY.")
         return create_response(503, {'error': 'LLM service is unavailable. Check API Key configuration.'})
@@ -241,7 +244,7 @@ def chat_follow_up(event):
         job_description_text = body.get('job_description')
         analysis_context = body.get('analysis_context')
         question = body.get('question')
-        chat_history_raw = body.get('chat_history', []) # Default to empty list
+        chat_history_raw = body.get('chat_history', [])
 
         # Basic validation for required fields (excluding history)
         required_fields = {
@@ -260,7 +263,7 @@ def chat_follow_up(event):
              logger.warning(f"Received chat_history is not a list: {type(chat_history_raw)}")
              return create_response(400, {'error': 'Invalid format for chat_history, expected a list.'})
 
-        logger.info(f"Starting chat follow-up for question: '{question}' with {len(chat_history_raw)} history messages.")
+        logger.info(f"Processing chat follow-up for question: '{question}' with {len(chat_history_raw)} history messages received.")
 
         # Convert frontend history to LangChain messages
         langchain_chat_history = []
@@ -272,13 +275,20 @@ def chat_follow_up(event):
             elif sender == 'ai' and text:
                 langchain_chat_history.append(AIMessage(content=text))
             else:
-                # Log and skip malformed messages
                 logger.warning(f"Skipping invalid message in chat_history: {msg}")
 
-        # --- LangChain Prompt Template for Chat (Updated for History) ---
-        # Updated system prompt and structure
+        # Implement Windowing via Truncation
+        # Keep the last k=5 turns (5 user + 5 AI = 10 messages total)
+        WINDOW_SIZE_TURNS = 5
+        windowed_history = langchain_chat_history[-(WINDOW_SIZE_TURNS * 2):]
+        if len(langchain_chat_history) > len(windowed_history):
+            logger.info(f"Applied windowing: Truncated history from {len(langchain_chat_history)} to {len(windowed_history)} messages.")
+        else:
+            logger.info("History length is within window size, no truncation needed.")
+
+        # --- LangChain Prompt Template for Chat (Remains the same structure) ---
         system_template = """You are the Resume Coach AI, continuing a conversation with a user about their resume and a job description.
-You have already provided an initial analysis. Now, answer the user's current follow-up question based on the information contained within the resume, the job description, your previous analysis, AND the preceding chat history provided below.
+You have already provided an initial analysis. Now, answer the user's current follow-up question based on the information contained within the resume, the job description, your previous analysis, AND the preceding chat history provided below (which may be windowed).
 Do not invent new information or make assumptions beyond this context. Keep your answer concise and directly related to the current question.
 
 Static Context:
@@ -290,31 +300,25 @@ Static Context:
 {analysis_context}
 --- End Static Context ---
 
-Chat History (User questions and your previous answers):"""
-        # Note: The actual history will be inserted by MessagesPlaceholder
+Chat History (Recent turns):"""
 
         prompt = ChatPromptTemplate.from_messages([
             SystemMessagePromptTemplate.from_template(system_template),
-            # This placeholder will insert the history messages correctly formatted
-            MessagesPlaceholder(variable_name="chat_history"),
-            # This is for the *current* user question
-            HumanMessagePromptTemplate.from_template("{question}")
+            MessagesPlaceholder(variable_name="chat_history"), # Placeholder that will inject the windowed history
+            HumanMessagePromptTemplate.from_template("{question}") # For the latest user message
         ])
 
-        # --- LangChain Chain (Structure remains the same) ---
+        # --- LangChain Chain ---
         chain = prompt | llm | StrOutputParser()
 
-        # --- Invoke Chain (Update input dictionary for history) ---
-        logger.info("Invoking LLM chain for chat with history...")
-        # Pass history to invoke
+        # --- Invoke Chain (Pass the *windowed* history) ---
+        logger.info("Invoking LLM chain for chat with windowed history...")
+        # Pass windowed_history
         answer = chain.invoke({
-            # Still needed for the System Prompt context
             "resume": resume_text,
             "job_description": job_description_text,
             "analysis_context": analysis_context,
-            # Pass the converted history list
-            "chat_history": langchain_chat_history,
-            # Pass the current question
+            "chat_history": windowed_history, # <-- Pass the truncated list
             "question": question
         })
         logger.info("LLM chat response generated successfully.")
