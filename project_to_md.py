@@ -16,36 +16,175 @@ except ImportError:
 
 # !!! IMPORTANT: Set these paths before running !!!
 # Use the corrected relative paths or your desired absolute paths
-SOURCE_DIRECTORY = "./frontend"
-OUTPUT_MARKDOWN_FILE = "./frontend_code.md"
+SOURCE_DIRECTORY = "./"
+OUTPUT_MARKDOWN_FILE = "./project_code.md"
 
-# List of wildcard patterns for files to ignore
+# --- Comprehensive Ignore Lists ---
+
+
+# List of wildcard patterns for FILES to ignore
 IGNORE_FILES = [
-    '.env*',
-    '*.log',
-    '*.lock',
-    'package-lock.json',
-    'yarn.lock',
-    '*.png', '*.jpg', '*.jpeg', '*.gif', '*.webp', '*.ico',
+    # --- Environment & Secrets ---
+    '.env*',                # Environment variables (e.g., .env, .env.local, .env.development)
+    'secrets.*',            # Secret files
+    'credentials.*',        # Credential files
+    'config.local.*',       # Local configuration overrides
+
+    # --- Logs ---
+    '*.log',                # Log files
+    'npm-debug.log*',       # NPM debug logs
+    'yarn-debug.log*',      # Yarn debug logs
+    'yarn-error.log*',      # Yarn error logs
+
+    # --- Dependency Lock Files ---
+    'package-lock.json',    # NPM lock file
+    'yarn.lock',            # Yarn lock file
+    'pnpm-lock.yaml',       # PNPM lock file
+    'poetry.lock',          # Poetry lock file
+    'Pipfile.lock',         # Pipenv lock file
+    'requirements.txt.lock', # Common pattern for locked requirements
+
+    # --- Compiled/Generated Code & Artifacts ---
+    '*.pyc',                # Python compiled bytecode
+    '*.pyo',                # Python optimized bytecode
+    '*.class',              # Java compiled classes
+    '*.dll', '*.exe',       # Windows binaries
+    '*.so', '*.dylib',      # Linux/macOS shared libraries (will ignore those in .venv too)
+    '*.o', '*.a', '*.obj',  # Object files, archives
+    '*.jar', '*.war', '*.ear', # Java archives
+    '*.wasm',               # WebAssembly binaries
+    '*generated.*',         # Files often marked as generated
+    '*auto_generated.*',    # Files often marked as auto-generated
+    # ADDED: Ignore JS and TS definition files globally per request
+    '*.js',
+    '*.d.ts',
+
+    # --- Build Output & Packages ---
+    '*.zip', '*.tar', '*.gz', '*.bz2', '*.rar', '*.7z', # Archives
+    '*.msi', '*.dmg', '*.pkg', '*.deb', '*.rpm',      # Installers/Packages
+    '*.iso', '*.img',       # Disk images
+
+    # --- Editor/IDE Specific ---
+    '*.swp', '*.swo',       # Vim swap files
+    '*~',                   # Common backup file pattern
+    '*.bak', '*.tmp',       # Backup/temporary files
+    '*.sublime-project',    # Sublime Text project files
+    '*.sublime-workspace',
+    '*.iml',                # IntelliJ module files
+    '.DS_Store',            # macOS Finder data
+    'Thumbs.db',            # Windows thumbnail cache
+    'ehthumbs.db',
+
+    # --- OS Specific ---
+    '._*',                  # macOS resource fork files
+
+    # --- Test Reports & Coverage ---
+    'junit.xml',            # JUnit XML reports
+    'coverage.xml',         # Coverage reports
+    '.coverage',            # Coverage data file
+    'nosetests.xml',
+
+    # --- Databases ---
+    '*.db', '*.sqlite', '*.sqlite3', # Local database files
+    '*.sqlitedb',
+
+    # --- Media & Assets ---
+    '*.png', '*.jpg', '*.jpeg', '*.gif', '*.webp', '*.ico', '*.bmp',
     '*.svg',
     '*.woff', '*.woff2', '*.ttf', '*.otf', '*.eot',
-    '*.DS_Store',
-    # Consider if you want to ignore the output file itself if it's inside the source dir
-    Path(OUTPUT_MARKDOWN_FILE).name, # Ignore the output file itself by name
+    '*.mp3', '*.wav', '*.ogg', '*.aac',
+    '*.mp4', '*.avi', '*.mov', '*.wmv', '*.flv',
+
+    # --- Specific Generated/Helper Files from Your Example ---
+    'frontend_code.md',
+    'project_to_md.py', # The script itself (if inside SOURCE_DIRECTORY)
+    'version_1_setup.md',
+    'version_2_setup.md',
+    Path(OUTPUT_MARKDOWN_FILE).name, # Ignore the output file itself
+
+    # --- Cloud Provider/Tooling Cache/State ---
+    'cdk.context.json',     # AWS CDK context cache
+
+    # --- Other ---
+    '.python-version',      # pyenv version file
 ]
 
-# List of wildcard patterns for folders to ignore
+# List of wildcard patterns for FOLDERS to ignore
 IGNORE_FOLDERS = [
-    'node_modules',
-    'dist',
-    'build',
-    '.git',
-    '.vscode',
-    '.idea',
-    '__pycache__',
-    'coverage',
-    'public',
+    # --- Dependency Management ---
+    'node_modules',         # Node.js dependencies
+    'bower_components',     # Bower dependencies (less common now)
+    'vendor',               # Common directory for PHP/Ruby/Go dependencies
+    'jspm_packages',        # JSPM packages
+
+    # --- Build Output / Distribution ---
+    'dist',                 # Common distribution folder
+    'build',                # Common build folder
+    'out',                  # Common output folder
+    'target',               # Common build folder (Java/Rust)
+    # 'bin', # REMOVED: To allow infrastructure/bin (and potentially others)
+    # 'obj', # REMOVED: To potentially allow obj if needed, add back if too noisy
+    'public',               # Often contains built frontend assets (NextJS, Vite, etc.)
+    '.next',                # Next.js build output
+    '.nuxt',                # Nuxt.js build output
+    '.svelte-kit',          # SvelteKit build output
+    'generated',            # Common generated code folder
+    'auto_generated',       # Common auto-generated code folder
+
+    # --- Python Specific ---
+    '__pycache__',          # Python bytecode cache
+    '*.egg-info',           # Python package build metadata
+    '.venv',                # Specific venv names take precedence
+    'venv',
+    'env',
+    '.env',
+    # 'lib', 'lib64',   # REMOVED: To allow infrastructure/lib. Venvs caught by .venv/venv/env patterns.
+    'include',              # Often part of venvs, keep for now unless needed
+    'Scripts',              # Windows virtual environment scripts folder
+    'site-packages',        # Usually inside a venv, keep ignored
+
+    # --- Version Control ---
+    '.git',                 # Git repository data
+    '.svn',                 # Subversion repository data
+    '.hg',                  # Mercurial repository data
+
+    # --- Editor/IDE Specific ---
+    '.vscode',              # VS Code settings
+    '.idea',                # JetBrains IDEs settings
+    '.vs',                  # Visual Studio settings
+
+    # --- Testing & Coverage ---
+    'coverage',             # Coverage reports folder
+    'htmlcov',              # HTML coverage report folder
+    '.pytest_cache',        # Pytest cache
+    '.hypothesis',          # Hypothesis cache
+
+    # --- Caching ---
+    '.cache',               # General cache directory (includes infrastructure/.cache)
+    '.mypy_cache',          # Mypy cache
+    '.ruff_cache',          # Ruff cache
+
+    # --- Cloud Provider/Tooling Output ---
+    '.serverless',          # Serverless Framework output
+    '.terraform',           # Terraform state/modules
+    'cdk.out',              # AWS CDK synthesis output (keep ignoring top-level)
+
+    # --- Logs & Temporary Files ---
+    'logs',                 # Common logs directory
+    'temp', 'tmp',          # Temporary file directories
+
+    # --- Documentation Output ---
+    '_build',               # Common Sphinx build output
+    '_site',                # Common Jekyll/static site generator output
+    'docs/build',           # Common documentation build output
+
+    # --- OS Specific ---
+    '.Trash-*',             # Linux trash directories
+
+    # --- Jupyter Notebook ---
+    '.ipynb_checkpoints',   # Jupyter checkpoint directories
 ]
+
 
 # --- End of Configuration ---
 
