@@ -107,6 +107,7 @@ graph TD
 │   │   ├── index.css          # Global base styles and CSS variables (theming)
 │   │   └── main.tsx           # React application entry point
 │   ├── .env                   # (ignored locally, required for build) Frontend env vars (VITE_API_URL)
+│   ├── .env.example           # Example env vars for build (copy to .env and update VITE_API_URL)
 │   ├── index.html             # HTML entry point for the SPA
 │   ├── package-lock.json      # Exact versions of frontend dependencies
 │   ├── package.json           # Frontend Node.js dependencies and scripts
@@ -136,7 +137,7 @@ graph TD
 | Component             | Technology/Service                                       | Justification / Role                                                                                                                        |
 | :-------------------- | :------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Frontend Framework**| React (v19+), TypeScript, Vite                         | Modern, performant SPA framework with type safety. Vite for DX and optimized builds.                                                        |
-| **Frontend Styling**  | CSS Modules (`App.css`), Global CSS (`index.css`), CSS Variables | Standard CSS with variables for theming (light/dark) and maintainability.                                                                   |
+| **Frontend Styling**  | Global CSS (`App.css`, `index.css`), CSS Variables                 | Standard CSS with variables for theming (light/dark) and maintainability.                                                                   |
 | **Frontend State**    | React `useState`, `useRef`, `useEffect`                  | Standard React hooks for component-level state and side effects.                                                                            |
 | **Frontend API Client**| Axios                                                    | Promise-based HTTP client for browser-to-backend communication.                                                                             |
 | **Frontend Persistence**| Browser `localStorage` (Inputs), `sessionStorage` (SessionID) | Client-side persistence: `localStorage` for inputs across sessions, `sessionStorage` for ephemeral session tracking.                      |
@@ -195,7 +196,7 @@ The backend Lambda function exposes the following endpoints via API Gateway:
 | `POST` | `/analyze`     | Analyze resume, create session, return result  | `{ "resume": "...", "job_description": "..." }` | `{ "analysis": "...", "sessionId": "..." }`    | 400 (Bad Request), 500, 503 (LLM Unavailable) |
 | `POST` | `/chat`        | Ask follow-up question in an existing session  | `{ "question": "...", "sessionId": "..." }`    | `{ "answer": "..." }`                          | 400, 404 (Session Not Found/Expired), 500, 503 |
 
-*Note: All endpoints support CORS preflight `OPTIONS` requests.*
+*Note: CORS preflight `OPTIONS` requests are handled by API Gateway (`corsPreflight` settings in CDK), not by the backend handler code.*
 
 ## 🌊 Data Flow Diagrams
 
