@@ -132,6 +132,29 @@ graph TD
     └── tsconfig.json          # TypeScript configuration for the CDK project
 ```
 
+## 🚀 Local Development
+
+### Backend Setup
+1. Create and activate a Python virtual environment:
+   ```bash
+   uv venv .venv
+   source .venv/bin/activate
+   ```
+2. Install backend dependencies:
+   ```bash
+   uv pip install -r backend/requirements.txt
+   ```
+
+### Frontend Setup
+1. Install frontend dependencies:
+   ```bash
+   cd frontend
+   npm install
+   cd ..
+   ```
+
+_Tip:_ You can simplify these steps using a `Makefile` with targets like `setup`, `dev-backend`, and `dev-frontend`.
+
 ## 🛠️ Technology Stack
 
 | Component             | Technology/Service                                       | Justification / Role                                                                                                                        |
@@ -478,19 +501,4 @@ Deployment uses the AWS CDK and requires specific prerequisites and steps:
         *   Python code errors (`handler.py`).
     *   **Verify:** `OPENAI_API_KEY` is correctly set and saved in Lambda environment variables.
     *   **Verify:** DynamoDB tables (`ResumeCoachItems`, `ResumeCoachSessions`) exist and have correct structure/data. Check TTL status on sessions table.
-    *   **Test:** API endpoints directly (`curl`, Postman) with correct payloads (including `sessionId` for `/chat`).
-
-### Deployment Issues
-*   **Symptom:** `cdk deploy` fails.
-    *   **Ensure:** Docker daemon is running locally.
-    *   **Check:** Terminal output for CDK/CloudFormation error messages (IAM permissions, resource conflicts, code syntax errors, ACM/Route53 issues).
-    *   **Verify:** AWS CLI credentials have sufficient permissions for all services involved.
-    *   **Check:** CloudFormation console (`us-west-2`, and `us-east-1` for cert issues) for detailed stack event logs.
-
-## 📄 License
-
-This project is licensed under the MIT License. (Assuming MIT - add a LICENSE file if needed).
-
-## 👥 Contributing
-
-Contributions are welcome! Please follow standard fork-and-pull-request workflow. Ensure code quality, add tests where applicable, and update documentation.
+    *   **Test:** API endpoints directly (`curl`, Postman) with correct payloads (including `sessionId`
