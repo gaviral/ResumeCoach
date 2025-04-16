@@ -1,1 +1,9 @@
 Pygments
+pyautogui
+
+# ResumeCoach/backend/requirements.txt (adding this here so that the IDE doesn't complain about the missing imports in backend folder eventhough backend has its own requirements.txt)
+boto3
+openai
+langchain
+langchain-openai
+# Add other langchain components if needed later, e.g., langchain-community

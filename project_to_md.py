@@ -24,6 +24,7 @@ OUTPUT_MARKDOWN_FILE = "./project_code.md"
 
 # List of wildcard patterns for FILES to ignore
 IGNORE_FILES = [
+    '.gitignore',
     # --- Environment & Secrets ---
     '.env*',                # Environment variables (e.g., .env, .env.local, .env.development)
     'secrets.*',            # Secret files
@@ -97,10 +98,15 @@ IGNORE_FILES = [
 
     # --- Specific Generated/Helper Files from Your Example ---
     'frontend_code.md',
-    'project_to_md.py', # The script itself (if inside SOURCE_DIRECTORY)
+    'project_to_md.py',       # The script itself (if inside SOURCE_DIRECTORY)
+    'extract_commits.py',     # Tooling script not part of runtime code
+    'RECENT_COMMIT_LOG.md',   # Auto-generated commit log
     'version_1_setup.md',
     'version_2_setup.md',
     Path(OUTPUT_MARKDOWN_FILE).name, # Ignore the output file itself
+    '.npmignore',             # Packaging ignore not relevant to code context
+    'errors_in_readme.md',
+    'codex_output.md',
 
     # --- Cloud Provider/Tooling Cache/State ---
     'cdk.context.json',     # AWS CDK context cache
@@ -183,6 +189,8 @@ IGNORE_FOLDERS = [
 
     # --- Jupyter Notebook ---
     '.ipynb_checkpoints',   # Jupyter checkpoint directories
+    # --- AWS CDK Output ---
+    'cdk.out',              # CDK synthesized CloudFormation artifacts
 ]
 
 
