@@ -246,3 +246,41 @@ backend/.ruff_cache/
 # PyPI configuration file
 backend/.pypirc
 frontend_code.md
+
+# IDE
+.idea/
+
+# Python virtual environments and caches
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Environment variable files
+.env
+.env.*
+
+# Packaging and build metadata
+pip-wheel-metadata/
+*.egg-info/
+
+# Pytest cache
+.pytest_cache/
+
+# Coverage reports
+.coverage
+htmlcov/
+coverage/
+
+# Logs
+logs/
+*.log
+
+# Frontend and Node.js
+frontend/node_modules/
+frontend/dist/
+
+# General build artifacts
+build/
+dist/
