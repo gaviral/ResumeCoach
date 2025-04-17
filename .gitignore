@@ -61,18 +61,12 @@ out/ # IntelliJ output
 
 # Environment Variables (Specific locations)
 /.env # Ignore .env file in the root directory
-infrastructure/.env
-backend/.env
-# NOTE: frontend/.env is intentionally NOT ignored for Vite build-time vars
+packages/infra/.env
+packages/backend-common/.env
+packages/backend-resume-module/.env
+# NOTE: packages/frontend/.env is intentionally NOT ignored for Vite build-time vars
 
 # Virtual Environments & Dependencies (Global)
-# .Python
-# [Bb]in
-# [Ii]nclude
-# [Ll]ib
-# [Ll]ib64
-# [Ll]ocal
-# [Ss]cripts
 pyvenv.cfg
 .venv
 venv/
@@ -86,76 +80,140 @@ pip-selfcheck.json
 ########################################################
 # Infrastructure (AWS CDK / TypeScript)
 ########################################################
-infrastructure/lib/*.js
-infrastructure/lib/*.d.ts
-infrastructure/bin/*.js
-infrastructure/bin/*.d.ts
-!infrastructure/jest.config.js # Keep Jest config
-infrastructure/node_modules
-infrastructure/.cdk.staging
-infrastructure/cdk.out
+packages/infra/lib/*.js
+packages/infra/lib/*.d.ts
+packages/infra/bin/*.js
+packages/infra/bin/*.d.ts
+!packages/infra/jest.config.js # Keep Jest config
+packages/infra/node_modules
+packages/infra/.cdk.staging
+packages/infra/cdk.out
 
 ########################################################
 # Frontend (React / Vite / TypeScript)
 ########################################################
-frontend/logs # Specific logs folder if used
-frontend/node_modules
-frontend/dist
-frontend/dist-ssr
-frontend/*.local # Ignores .env.local, .env.development.local etc.
-frontend/.env
-# Editor files previously here are now handled globally
+packages/frontend/logs # Specific logs folder if used
+packages/frontend/node_modules
+packages/frontend/dist
+packages/frontend/dist-ssr
+packages/frontend/*.local # Ignores .env.local, .env.development.local etc.
+packages/frontend/.env
 
 ########################################################
-# Backend (Python)
+# Backend Common (Python)
 ########################################################
-backend/__pycache__
-backend/*.py[cod]
-backend/*$py.class
-backend/*.so # C extensions
+packages/backend-common/__pycache__
+packages/backend-common/*.py[cod]
+packages/backend-common/*$py.class
+packages/backend-common/*.so
+packages/backend-common/.Python
+packages/backend-common/build/
+packages/backend-common/develop-eggs/
+packages/backend-common/dist/
+packages/backend-common/downloads/
+packages/backend-common/eggs/
+packages/backend-common/.eggs/
+packages/backend-common/lib/
+packages/backend-common/lib64/
+packages/backend-common/parts/
+packages/backend-common/sdist/
+packages/backend-common/var/
+packages/backend-common/wheels/
+packages/backend-common/share/python-wheels/
+packages/backend-common/*.egg-info/
+packages/backend-common/.installed.cfg
+packages/backend-common/*.egg
+packages/backend-common/MANIFEST
+packages/backend-common/*.manifest
+packages/backend-common/*.spec
+packages/backend-common/pip-log.txt
+packages/backend-common/pip-delete-this-directory.txt
+packages/backend-common/htmlcov/
+packages/backend-common/.tox/
+packages/backend-common/.nox/
+packages/backend-common/.coverage
+packages/backend-common/.coverage.*
+packages/backend-common/.cache
+packages/backend-common/nosetests.xml
+packages/backend-common/coverage.xml
+packages/backend-common/*.cover
+packages/backend-common/*.py,cover
+packages/backend-common/.hypothesis/
+packages/backend-common/.pytest_cache/
+packages/backend-common/cover/
+packages/backend-common/*.mo
+packages/backend-common/*.pot
+packages/backend-common/*.log
+packages/backend-common/local_settings.py
+packages/backend-common/db.sqlite3
+packages/backend-common/db.sqlite3-journal
+packages/backend-common/instance/
+packages/backend-common/.webassets-cache
+packages/backend-common/.scrapy
+packages/backend-common/docs/_build/
+packages/backend-common/.pybuilder/
+packages/backend-common/target/
+packages/backend-common/.ipynb_checkpoints
+packages/backend-common/profile_default/
+packages/backend-common/ipython_config.py
 
-# Distribution / packaging
-backend/.Python
-backend/build/
-backend/develop-eggs/
-backend/dist/
-backend/downloads/
-backend/eggs/
-backend/.eggs/
-backend/lib/ # If generated locally
-backend/lib64/ # If generated locally
-backend/parts/
-backend/sdist/
-backend/var/
-backend/wheels/
-backend/share/python-wheels/
-backend/*.egg-info/
-backend/.installed.cfg
-backend/*.egg
-backend/MANIFEST
-
-# PyInstaller
-backend/*.manifest
-backend/*.spec
-
-# Installer logs
-backend/pip-log.txt
-backend/pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-backend/htmlcov/
-backend/.tox/
-backend/.nox/
-backend/.coverage
-backend/.coverage.*
-backend/.cache
-backend/nosetests.xml
-backend/coverage.xml
-backend/*.cover
-backend/*.py,cover
-backend/.hypothesis/
-backend/.pytest_cache/
-backend/cover/
+########################################################
+# Backend Resume Module (Python)
+########################################################
+packages/backend-resume-module/__pycache__
+packages/backend-resume-module/*.py[cod]
+packages/backend-resume-module/*$py.class
+packages/backend-resume-module/*.so
+packages/backend-resume-module/.Python
+packages/backend-resume-module/build/
+packages/backend-resume-module/develop-eggs/
+packages/backend-resume-module/dist/
+packages/backend-resume-module/downloads/
+packages/backend-resume-module/eggs/
+packages/backend-resume-module/.eggs/
+packages/backend-resume-module/lib/
+packages/backend-resume-module/lib64/
+packages/backend-resume-module/parts/
+packages/backend-resume-module/sdist/
+packages/backend-resume-module/var/
+packages/backend-resume-module/wheels/
+packages/backend-resume-module/share/python-wheels/
+packages/backend-resume-module/*.egg-info/
+packages/backend-resume-module/.installed.cfg
+packages/backend-resume-module/*.egg
+packages/backend-resume-module/MANIFEST
+packages/backend-resume-module/*.manifest
+packages/backend-resume-module/*.spec
+packages/backend-resume-module/pip-log.txt
+packages/backend-resume-module/pip-delete-this-directory.txt
+packages/backend-resume-module/htmlcov/
+packages/backend-resume-module/.tox/
+packages/backend-resume-module/.nox/
+packages/backend-resume-module/.coverage
+packages/backend-resume-module/.coverage.*
+packages/backend-resume-module/.cache
+packages/backend-resume-module/nosetests.xml
+packages/backend-resume-module/coverage.xml
+packages/backend-resume-module/*.cover
+packages/backend-resume-module/*.py,cover
+packages/backend-resume-module/.hypothesis/
+packages/backend-resume-module/.pytest_cache/
+packages/backend-resume-module/cover/
+packages/backend-resume-module/*.mo
+packages/backend-resume-module/*.pot
+packages/backend-resume-module/*.log
+packages/backend-resume-module/local_settings.py
+packages/backend-resume-module/db.sqlite3
+packages/backend-resume-module/db.sqlite3-journal
+packages/backend-resume-module/instance/
+packages/backend-resume-module/.webassets-cache
+packages/backend-resume-module/.scrapy
+packages/backend-resume-module/docs/_build/
+packages/backend-resume-module/.pybuilder/
+packages/backend-resume-module/target/
+packages/backend-resume-module/.ipynb_checkpoints
+packages/backend-resume-module/profile_default/
+packages/backend-resume-module/ipython_config.py
 
 # Translations
 backend/*.mo
