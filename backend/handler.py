@@ -29,7 +29,22 @@ if not ITEMS_TABLE_NAME or not SESSIONS_TABLE_NAME:
     logger.error("FATAL: Environment variable ITEMS_TABLE_NAME or SESSIONS_TABLE_NAME is not set.")
     raise ValueError("FATAL: ITEMS_TABLE_NAME or SESSIONS_TABLE_NAME not set.")
 
-OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
+ssm = boto3.client('ssm')
+param_name = os.environ.get('OPENAI_API_PARAM_NAME')
+
+OPENAI_API_KEY = None
+if param_name:
+    try:
+        OPENAI_API_KEY = ssm.get_parameter(
+            Name=param_name,
+            WithDecryption=True
+        )['Parameter']['Value']
+        logger.info("Fetched OpenAI API key from SSM Parameter Store.")
+    except Exception as e:
+        logger.error(f"Could not retrieve OpenAI key from SSM ({param_name}): {e}")
+# fallback for local/dev where you might still export OPENAI_API_KEY
+OPENAI_API_KEY = OPENAI_API_KEY or os.environ.get('OPENAI_API_KEY')
+
 if not OPENAI_API_KEY:
     logger.error("WARN: Environment variable OPENAI_API_KEY is not set. LLM calls will fail.")
 

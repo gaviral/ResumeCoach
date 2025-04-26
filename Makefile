@@ -7,8 +7,8 @@ setup: dev-backend dev-frontend
 
 # Create virtualenv and install backend dependencies
 dev-backend:
-	uv venv .venv
-	source .venv/bin/activate
+	uv venv .venv && \
+	. .venv/bin/activate && \
 	uv pip install -r backend/requirements.txt
 
 # Install frontend dependencies

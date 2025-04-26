@@ -1,4 +1,5 @@
 // ResumeCoach/infrastructure/lib/infrastructure-stack.ts
+import * as iam from 'aws-cdk-lib/aws-iam';
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
@@ -80,13 +81,11 @@ export class InfrastructureStack extends cdk.Stack {
         },
       }),
       environment: {
-        // *** UPDATED: Rename ITEMS table env var ***
         ITEMS_TABLE_NAME: itemsTable.tableName,
-        // *** ADDED: Sessions Table Env Var ***
         SESSIONS_TABLE_NAME: sessionsTable.tableName,
-        // *** END ADDED ***
         LOG_LEVEL: 'INFO',
-        OPENAI_API_KEY: 'CONFIGURE_IN_LAMBDA_CONSOLE', // Remember to set manually
+        // NEW – just the name, **not** the key
+        OPENAI_API_PARAM_NAME: '/ResumeCoach/OpenAIApiKey',
       },
       timeout: Duration.seconds(60), // Keep timeout reasonable for LLM calls + DDB I/O
       memorySize: 256, // May need increase depending on memory usage with state
@@ -96,9 +95,16 @@ export class InfrastructureStack extends cdk.Stack {
     });
     // Grant permissions to both tables
     itemsTable.grantReadData(backendLambda); // Only needs read for defaults
-    // *** ADDED: Grant R/W to Sessions Table ***
     sessionsTable.grantReadWriteData(backendLambda);
-    // *** END ADDED ***
+    // --- NEW: allow Lambda to read the SecureString parameter ---
+    const paramArn = `arn:aws:ssm:${this.region}:${this.account}:parameter/ResumeCoach/OpenAIApiKey`;
+
+    backendLambda.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['ssm:GetParameter'],
+      resources: [paramArn],
+    }));
+    // --- END NEW ---
+
 
     // --- API Gateway (No changes needed here for session logic) ---
     const httpApi = new apigwv2.HttpApi(this, 'ResumeCoachHttpApi', {
