@@ -1,0 +1,133 @@
+# GitHub Actions CI/CD pipeline for ResumeCoach
+# ------------------------------------------------
+# This workflow validates every PR and deploys to the “prod” AWS account
+# whenever changes land on the `main` branch.
+#
+# Required GitHub secrets (Repository → Settings → Secrets and variables → Actions):
+#   AWS_ACCESS_KEY_ID           – IAM user / role with CDK deploy permissions
+#   AWS_SECRET_ACCESS_KEY       – matching secret key
+#   AWS_ACCOUNT_ID              – 12‑digit AWS account ID (used by CDK)
+#
+# Optional secrets (only if you need to override defaults):
+#   AWS_REGION                  – defaults to us‑west‑2 for this project
+#
+name: CI & CD
+
+on:
+  # Validate pull requests to main
+  pull_request:
+    branches: [main]
+  # Deploy when main is updated
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write  # needed if you later switch to OIDC‑based AWS auth
+
+jobs:
+  # ────────────────────────────────────────────────────────────────
+  build-test:
+    name: Lint / Build / Test / Synth
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣  Check out code
+      - uses: actions/checkout@v4
+
+      # 2️⃣  Front‑end tasks (Node 20)
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install front‑end deps
+        working-directory: frontend
+        run: npm ci
+
+      - name: Lint front‑end
+        working-directory: frontend
+        run: npm run lint --if-present
+
+      - name: Build front‑end
+        working-directory: frontend
+        run: npm run build
+
+      # 3️⃣  Back‑end tasks (Python 3.11)
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install back‑end deps
+        run: pip install -r backend/requirements.txt
+
+      - name: Run back‑end tests (placeholder)
+        run: |
+          if [ -d tests ]; then
+            python -m pytest -q
+          else
+            echo "No tests yet – skipping."
+          fi
+
+      # 4️⃣  CDK synth to ensure infra compiles
+      - name: Install CDK & infra deps
+        working-directory: infrastructure
+        run: npm ci
+
+      - name: CDK synth
+        working-directory: infrastructure
+        env:
+          CDK_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
+          CDK_DEFAULT_REGION: ${{ secrets.AWS_REGION || 'us-west-2' }}
+        run: npx cdk synth
+
+  # ────────────────────────────────────────────────────────────────
+  deploy:
+    name: Deploy to prod (main branch)
+    needs: build-test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
+    environment:
+      name: production
+      url: https://coach.aviralgarg.com
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Install toolchains
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      # Build artefacts exactly like local Makefile
+      - name: Build front‑end dist/
+        run: |
+          (cd frontend && npm ci && npm run build)
+
+      - name: Install infra deps
+        working-directory: infrastructure
+        run: npm ci
+
+      # Deploy via CDK
+      - name: CDK deploy (no approval)
+        working-directory: infrastructure
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION || 'us-west-2' }}
+          CDK_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
+          CDK_DEFAULT_REGION: ${{ secrets.AWS_REGION || 'us-west-2' }}
+        run: npx cdk deploy --require-approval never
