@@ -100,6 +100,10 @@ IGNORE_FILES = [
     'project_to_md.py', # The script itself (if inside SOURCE_DIRECTORY)
     'version_1_setup.md',
     'version_2_setup.md',
+    'plan.md',
+    '.gitignore',
+    'extract_commits.py',
+    '.npmignore',
     Path(OUTPUT_MARKDOWN_FILE).name, # Ignore the output file itself
 
     # --- Cloud Provider/Tooling Cache/State ---
