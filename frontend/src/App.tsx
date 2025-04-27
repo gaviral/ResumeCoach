@@ -209,7 +209,7 @@ function App() {
       } catch (err) {
           const formattedError = formatError(err);
           console.error("Error during analysis:", err);
-          let specificError = { message: `Analysis failed: ${formattedError.message}`, status: formattedError.status };
+          const specificError = { message: `Analysis failed: ${formattedError.message}`, status: formattedError.status };
           if (formattedError.status === 503 || formattedError.message.toLowerCase().includes('api key')) {
               specificError.message = `Analysis failed: ${formattedError.message}. Please ensure the backend OpenAI API Key is configured correctly.`;
           }
@@ -262,7 +262,7 @@ function App() {
           const errorResponse: ChatMessage = { sender: 'ai', text: errorText };
           setChatHistory(prev => [...prev, errorResponse]); // Show error in chat
 
-          let specificError = { message: `Chat failed: ${formattedError.message}`, status: formattedError.status };
+          const specificError = { message: `Chat failed: ${formattedError.message}`, status: formattedError.status };
            if (formattedError.status === 503 || formattedError.message.toLowerCase().includes('api key')) {
               specificError.message = `Chat failed: ${formattedError.message}. Please ensure the backend OpenAI API Key is configured correctly.`;
           }
