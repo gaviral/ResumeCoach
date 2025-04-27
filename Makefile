@@ -34,4 +34,11 @@ deploy: prepare-deploy
 	cd infrastructure && npm install
 	cd infrastructure && npx cdk deploy
 
+.PHONY: dev-setup
+dev-setup:
+	npm install                             # installs root deps + Husky hooks
+	cd frontend  && npm install            # React deps
+	uv pip install -r backend/requirements.txt
+
+
 # End of Makefile 

@@ -1,0 +1,30 @@
+{
+  "name": "resumecoach",
+  "version": "1.0.0",
+  "description": "**Current Version Focus:** This document describes the current, latest state of the Resume Coach application. It is intended for Software Development Engineers involved in the development, maintenance, and extension of this project. It details the architecture, components, data flow, design decisions, and operational aspects as they exist now.",
+  "main": "index.js",
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepare": "husky install",
+    "check": "npm run -w frontend build && npx cdk -a infrastructure synth && pytest -q || true"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gaviral/ResumeCoach.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/gaviral/ResumeCoach/issues"
+  },
+  "homepage": "https://github.com/gaviral/ResumeCoach#readme",
+  "devDependencies": {
+    "husky": "^8.0.0",
+    "lint-staged": "^15.5.1",
+    "prettier": "^3.5.3"
+  }
+}
