@@ -4,9 +4,8 @@
 # whenever changes land on the `main` branch.
 #
 # Required GitHub secrets (Repository → Settings → Secrets and variables → Actions):
-#   AWS_ACCOUNT_ID              – 12‑digit AWS account ID (used by CDK)
-#
-# Optional secrets (only if you need to override defaults):
+#   AWS_ACCESS_KEY_ID           - AWS access key for authentication
+#   AWS_SECRET_ACCESS_KEY       - AWS secret key for authentication
 #   AWS_REGION                  – defaults to us‑west‑2 for this project
 #
 name: CI & CD
@@ -24,9 +23,13 @@ permissions:
 
 jobs:
   # ────────────────────────────────────────────────────────────────
-  build-test:
-    name: Lint / Build / Test / Synth
+  build-test-deploy:
+    name: Lint / Build / Test / Deploy
     runs-on: ubuntu-latest
+    # Add concurrency to prevent multiple deploys running at once
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
 
     steps:
       # 1️⃣  Check out code
@@ -68,7 +71,7 @@ jobs:
             echo "No tests yet – skipping."
           fi
 
-      # 4️⃣  Configure AWS credentials using access keys instead of OIDC
+      # 4️⃣  Configure AWS credentials using access keys
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -76,63 +79,18 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION || 'us-west-2' }}
 
-      # 5️⃣  CDK synth to ensure infra compiles
+      # 5️⃣  Install CDK & infra deps
       - name: Install CDK & infra deps
         working-directory: infrastructure
         run: npm ci
 
+      # 6️⃣  CDK synth to ensure infra compiles
       - name: CDK synth
         working-directory: infrastructure
         run: npx cdk synth
 
-  # ────────────────────────────────────────────────────────────────
-  deploy:
-    name: Deploy to prod (main branch)
-    needs: build-test
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    concurrency:
-      group: production-deploy
-      cancel-in-progress: false
-    environment:
-      name: production
-      url: https://coach.aviralgarg.com
-    permissions:
-      contents: read
-
-    steps:
-      - uses: actions/checkout@v4
-
-      # Install toolchains
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-
-      # Build artefacts exactly like local Makefile
-      - name: Build front-end dist/
-        run: |
-          npm ci                       # root install (covers workspace)
-          npm run -w frontend build
-
-      # Configure AWS credentials using access keys instead of OIDC
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION || 'us-west-2' }}
-
-      - name: Install infra deps
-        working-directory: infrastructure
-        run: npm ci
-
-      # Deploy via CDK
+      # 7️⃣  Deploy only if on main branch and not a PR
       - name: CDK deploy (no approval)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         working-directory: infrastructure
         run: npx cdk deploy --require-approval never
