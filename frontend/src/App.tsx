@@ -221,7 +221,7 @@ function App() {
   };
 
   const handleChatSubmit = async () => {
-      if (!apiUrl) { setError({ message: "API URL not configured." }); return; }
+      if (!apiUrl) { setError({ message: "API URL is not configured." }); return; }
       if (!chatInput.trim()) { return; }
       // Check for sessionId AND analysisResult (analysisResult implies a session should exist)
       if (!analysisResult || !sessionId) {
