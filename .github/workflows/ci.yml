@@ -21,7 +21,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write # needed for OIDC authentication with AWS
 
 jobs:
   # ────────────────────────────────────────────────────────────────
@@ -69,13 +68,13 @@ jobs:
             echo "No tests yet – skipping."
           fi
 
-      # 4️⃣  Configure AWS credentials using OIDC
+      # 4️⃣  Configure AWS credentials using access keys instead of OIDC
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-role
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION || 'us-west-2' }}
-          role-session-name: GitHubActionsSession
 
       # 5️⃣  CDK synth to ensure infra compiles
       - name: Install CDK & infra deps
@@ -100,7 +99,6 @@ jobs:
       url: https://coach.aviralgarg.com
     permissions:
       contents: read
-      id-token: write # needed for OIDC authentication with AWS
 
     steps:
       - uses: actions/checkout@v4
@@ -122,13 +120,13 @@ jobs:
           npm ci                       # root install (covers workspace)
           npm run -w frontend build
 
-      # Configure AWS credentials using OIDC
+      # Configure AWS credentials using access keys instead of OIDC
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-role
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION || 'us-west-2' }}
-          role-session-name: GitHubActionsSession
 
       - name: Install infra deps
         working-directory: infrastructure
