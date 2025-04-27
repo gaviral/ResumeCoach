@@ -90,8 +90,6 @@ graph TD
 ./ (ResumeCoach)
 ├── .gitignore                 # Specifies intentionally untracked files
 ├── README.md                  # This file: Project overview and documentation
-├── RECENT_COMMIT_LOG.md       # Log of the 10 most recent commits (auto-generated)
-├── extract_commits.py         # Python script to generate RECENT_COMMIT_LOG.md
 ├── requirements.txt           # Root Python dependencies (primarily for local dev/IDE)
 ├── backend/
 │   ├── handler.py             # Main Lambda function code (routing, LLM logic, DB access, session mgmt)
@@ -194,7 +192,7 @@ _Tip:_ You can simplify these steps using a `Makefile` with targets like `setup`
 | **LLM Service**          | OpenAI API (`gpt-4o-mini` model)                                 | Provides the AI model for analysis and chat.                                                                         |
 | **LLM Client**           | OpenAI (Python Library)                                          | Official Python client used by LangChain.                                                                            |
 | **Packaging (Lambda)**   | Docker (via CDK Bundling)                                        | Creates consistent Lambda deployment package with Python dependencies.                                               |
-| **Dev Tooling**          | `extract_commits.py`, `Pygments`, `pyautogui`                    | Root Python dependencies for local development tasks (e.g., commit log generation).                                  |
+| **Dev Tooling**          | `Pygments`, `pyautogui`                                          | Root Python dependencies for local development tasks.                                                                |
 
 ## 💽 Database Structure
 

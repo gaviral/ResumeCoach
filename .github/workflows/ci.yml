@@ -52,6 +52,8 @@ jobs:
 
       - name: Build front-end
         run: npm run -w frontend build
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
 
       # 3️⃣  Back‑end tasks (Python 3.11)
       - name: Set up Python
