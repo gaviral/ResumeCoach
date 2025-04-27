@@ -1,11 +1,9 @@
 # GitHub Actions CI/CD pipeline for ResumeCoach
 # ------------------------------------------------
-# This workflow validates every PR and deploys to the “prod” AWS account
+# This workflow validates every PR and deploys to the "prod" AWS account
 # whenever changes land on the `main` branch.
 #
 # Required GitHub secrets (Repository → Settings → Secrets and variables → Actions):
-#   AWS_ACCESS_KEY_ID           – IAM user / role with CDK deploy permissions
-#   AWS_SECRET_ACCESS_KEY       – matching secret key
 #   AWS_ACCOUNT_ID              – 12‑digit AWS account ID (used by CDK)
 #
 # Optional secrets (only if you need to override defaults):
@@ -23,7 +21,7 @@ on:
 
 permissions:
   contents: read
-  id-token: write # needed if you later switch to OIDC‑based AWS auth
+  id-token: write # needed for OIDC authentication with AWS
 
 jobs:
   # ────────────────────────────────────────────────────────────────
@@ -71,16 +69,21 @@ jobs:
             echo "No tests yet – skipping."
           fi
 
-      # 4️⃣  CDK synth to ensure infra compiles
+      # 4️⃣  Configure AWS credentials using OIDC
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-role
+          aws-region: ${{ secrets.AWS_REGION || 'us-west-2' }}
+          role-session-name: GitHubActionsSession
+
+      # 5️⃣  CDK synth to ensure infra compiles
       - name: Install CDK & infra deps
         working-directory: infrastructure
         run: npm ci
 
       - name: CDK synth
         working-directory: infrastructure
-        env:
-          CDK_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
-          CDK_DEFAULT_REGION: ${{ secrets.AWS_REGION || 'us-west-2' }} # ok if secret defined
         run: npx cdk synth
 
   # ────────────────────────────────────────────────────────────────
@@ -95,6 +98,9 @@ jobs:
     environment:
       name: production
       url: https://coach.aviralgarg.com
+    permissions:
+      contents: read
+      id-token: write # needed for OIDC authentication with AWS
 
     steps:
       - uses: actions/checkout@v4
@@ -116,6 +122,14 @@ jobs:
           npm ci                       # root install (covers workspace)
           npm run -w frontend build
 
+      # Configure AWS credentials using OIDC
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-role
+          aws-region: ${{ secrets.AWS_REGION || 'us-west-2' }}
+          role-session-name: GitHubActionsSession
+
       - name: Install infra deps
         working-directory: infrastructure
         run: npm ci
@@ -123,10 +137,4 @@ jobs:
       # Deploy via CDK
       - name: CDK deploy (no approval)
         working-directory: infrastructure
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ secrets.AWS_REGION || 'us-west-2' }}
-          CDK_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
-          CDK_DEFAULT_REGION: ${{ secrets.AWS_REGION || 'us-west-2' }}
         run: npx cdk deploy --require-approval never
