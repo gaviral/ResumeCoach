@@ -23,8 +23,8 @@
   },
   "homepage": "https://github.com/gaviral/ResumeCoach#readme",
   "devDependencies": {
-    "husky": "^8.0.0",
-    "lint-staged": "^15.5.1",
-    "prettier": "^3.5.3"
+    "husky": "*",
+    "lint-staged": "*",
+    "prettier": "*"
   }
 }
