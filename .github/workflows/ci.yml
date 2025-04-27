@@ -23,7 +23,7 @@ on:
 
 permissions:
   contents: read
-  id-token: write  # needed if you later switch to OIDC‑based AWS auth
+  id-token: write # needed if you later switch to OIDC‑based AWS auth
 
 jobs:
   # ────────────────────────────────────────────────────────────────
@@ -40,32 +40,30 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
-          cache-dependency-path: frontend/package-lock.json
+          cache: npm
+          cache-dependency-path: package-lock.json # ← root lock-file
 
-      - name: Install front‑end deps
-        working-directory: frontend
+      # 🔹 NEW: install root + workspace deps
+      - name: Install deps (root + workspace)
         run: npm ci
 
-      - name: Lint front‑end
-        working-directory: frontend
-        run: npm run lint --if-present
+      - name: Lint front-end
+        run: npm run -w frontend lint --if-present
 
-      - name: Build front‑end
-        working-directory: frontend
-        run: npm run build
+      - name: Build front-end
+        run: npm run -w frontend build
 
       # 3️⃣  Back‑end tasks (Python 3.11)
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: "pip"
+          cache: pip
 
-      - name: Install back‑end deps
+      - name: Install back-end deps
         run: pip install -r backend/requirements.txt
 
-      - name: Run back‑end tests (placeholder)
+      - name: Run back-end tests (placeholder)
         run: |
           if [ -d tests ]; then
             python -m pytest -q
@@ -82,7 +80,7 @@ jobs:
         working-directory: infrastructure
         env:
           CDK_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
-          CDK_DEFAULT_REGION: ${{ secrets.AWS_REGION || 'us-west-2' }}
+          CDK_DEFAULT_REGION: ${{ secrets.AWS_REGION || 'us-west-2' }} # ok if secret defined
         run: npx cdk synth
 
   # ────────────────────────────────────────────────────────────────
@@ -105,17 +103,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
+          cache: npm
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: "pip"
+          cache: pip
 
       # Build artefacts exactly like local Makefile
-      - name: Build front‑end dist/
+      - name: Build front-end dist/
         run: |
-          (cd frontend && npm ci && npm run build)
+          npm ci                       # root install (covers workspace)
+          npm run -w frontend build
 
       - name: Install infra deps
         working-directory: infrastructure
