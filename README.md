@@ -156,6 +156,7 @@ secrets:
 - `AWS_ACCESS_KEY_ID`
 - `AWS_SECRET_ACCESS_KEY`
 - `AWS_REGION` (default `us-west-2`)
+- `VITE_API_URL` (base URL of the ResumeCoach API Gateway (e.g. https://abcd123.execute-api.us-west-2.amazonaws.com))
 
 Switching to GitHub OIDC is tracked for a future sprint.
 
