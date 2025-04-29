@@ -153,7 +153,11 @@ export class InfrastructureStack extends cdk.Stack {
     const distribution = new cloudfront.Distribution(this, 'ResumeCoachDistribution', {
       comment: `CloudFront distribution for ${siteDomain}`,
       defaultBehavior: {
-        origin: new origins.S3Origin(frontendBucket, { originAccessIdentity }),
+        origin: origins.S3BucketOrigin.withOriginAccessIdentity(
+          frontendBucket,
+          { originAccessIdentity }   // reuse the OAI you already create above
+        ),
+        
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
         cachedMethods: cloudfront.CachedMethods.CACHE_GET_HEAD_OPTIONS,

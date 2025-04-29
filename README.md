@@ -112,7 +112,7 @@ git push                    # 🪄  Husky auto-formats staged files with Black &
 ### Pre-push sanity check
 
 ```bash
-npm run check     # lint → build → CDK synth → pytest (mirrors CI)
+npm run check     # build → CDK synth → pytest (mirrors CI)
 ```
 
 ESLint, Prettier, **and Python Black** all run automatically on staged files via Husky/lint-staged.
@@ -126,7 +126,7 @@ ESLint, Prettier, **and Python Black** all run automatically on staged files via
 | **SPA**              | React 19, Vite, TypeScript                        |                                                           |
 | **Styling/Theming**  | Plain CSS + CSS variables                         | Light / dark via `prefers-color-scheme`                   |
 | **HTTP client**      | Axios                                             |                                                           |
-| **LLM framework**    | LangChain 0.3                                     |                                                           |
+| **LLM framework**    | LangChain                                         |                                                           |
 | **LLM provider**     | OpenAI `gpt-4o-mini`                              |                                                           |
 | **API layer**        | API Gateway HTTP API (v2)                         | CORS `*` in dev                                           |
 | **Compute**          | AWS Lambda (Py 3.11, ARM64)                       | Docker bundling                                           |
@@ -241,7 +241,6 @@ After the first deploy:
   `S3BucketOrigin` once the CDK fix lands.
 - Front-end is a single React component; needs refactor before adding
   complexity.
-- Python auto-formatting not wired into pre-commit yet (learning in progress).
 
 ---
 
