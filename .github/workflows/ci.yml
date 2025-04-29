@@ -55,9 +55,9 @@ jobs:
       - name: Install backend deps
         run: |
           python -m pip install --upgrade pip uv
-          uv pip install -r backend/requirements.txt
+          uv pip install --system -r backend/requirements.txt
           # tooling that isn’t in backend/requirements.txt
-          uv pip install black pytest
+          uv pip install --system black pytest
 
       # ─── 3. ESLint ───────────────────────────────────────────────
       - name: ESLint (fail on warnings)
