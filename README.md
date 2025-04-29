@@ -93,6 +93,22 @@ make dev-setup
 
 _Back-end virtual-env uses [`uv`](https://github.com/astral-sh/uv)._
 
+## 🔄 Local developer workflow
+
+```bash
+# After you ran `make dev-setup` once …
+
+source .venv/bin/activate   # activate Python virtual-env
+npm run check               # 🏃  build + test composite (mirrors CI)
+git push                    # 🪄  Husky auto-formats staged files with Black & Prettier
+```
+
+| Stage             | Tool                 | Purpose                                               |
+| ----------------- | -------------------- | ----------------------------------------------------- |
+| 🏗 Frontend build | tsc -b && vite build | Type-check & bundle React                             |
+| ☁️ Infra synth    | cdk synth            | Compile CDK stacks (no AWS calls)                     |
+| 🧪 Backend tests  | pytest -q            | Runs only your own tests (vendor test suites ignored) |
+
 ### Pre-push sanity check
 
 ```bash
