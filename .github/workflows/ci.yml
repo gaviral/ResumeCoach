@@ -59,11 +59,15 @@ jobs:
           # tooling that isn’t in backend/requirements.txt
           uv pip install black pytest
 
-      # ─── 3. Composite sanity check (lint + build + synth + pytest)
+      # ─── 3. ESLint ───────────────────────────────────────────────
+      - name: ESLint (fail on warnings)
+        run: npm run -w frontend lint -- --max-warnings=0
+
+      # ─── 4. Composite sanity check (lint + build + synth + pytest)
       - name: npm run check
         run: npm run check
 
-      # ─── 4. Infrastructure deps (needed only for synth/deploy) ───
+      # ─── 5. Infrastructure deps (needed only for synth/deploy) ───
       - name: Install infra deps
         working-directory: infrastructure
         run: npm ci
@@ -72,7 +76,7 @@ jobs:
         working-directory: infrastructure
         run: npx cdk synth
 
-      # ─── 5. Configure AWS creds & deploy (main pushes only) ─────
+      # ─── 6. Configure AWS creds & deploy (main pushes only) ─────
       - name: Configure AWS credentials
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: aws-actions/configure-aws-credentials@v4
