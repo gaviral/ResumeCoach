@@ -99,9 +99,7 @@ _Back-end virtual-env uses [`uv`](https://github.com/astral-sh/uv)._
 npm run check     # lint → build → CDK synth → pytest (mirrors CI)
 ```
 
-_ESLint / Prettier run automatically on staged files via Husky.  
-Black auto-formatting for Python will be added once the team finalises tooling
-(learning-curve item, planned later)._
+ESLint, Prettier, **and Python Black** all run automatically on staged files via Husky/lint-staged.
 
 ---
 

@@ -3,4 +3,4 @@ boto3
 openai
 langchain
 langchain-openai
-# Add other langchain components if needed later, e.g., langchain-community
+black
