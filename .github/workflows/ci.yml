@@ -21,77 +21,66 @@ on:
 permissions:
   contents: read
 
+env:
+  # forwarded into `npm run check` → Vite build
+  VITE_API_URL: ${{ secrets.VITE_API_URL }}
+  AWS_REGION: us-west-2
+
 jobs:
-  # ────────────────────────────────────────────────────────────────
   build-test-deploy:
-    name: Lint / Build / Test / Deploy
     runs-on: ubuntu-latest
-    # Add concurrency to prevent multiple deploys running at once
     concurrency:
       group: production-deploy
       cancel-in-progress: false
 
     steps:
-      # 1️⃣  Check out code
+      # ─── 0. Clone ────────────────────────────────────────────────
       - uses: actions/checkout@v4
 
-      # 2️⃣  Front‑end tasks (Node 20)
-      - name: Set up Node
-        uses: actions/setup-node@v4
+      # ─── 1. Toolchains ───────────────────────────────────────────
+      - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: npm
-          cache-dependency-path: package-lock.json # ← root lock-file
 
-      # 🔹 NEW: install root + workspace deps
-      - name: Install deps (root + workspace)
-        run: npm ci
-
-      - name: Lint front-end
-        run: npm run -w frontend lint --if-present
-
-      - name: Build front-end
-        run: npm run -w frontend build
-        env:
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
-
-      # 3️⃣  Back‑end tasks (Python 3.11)
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
 
-      - name: Install back-end deps
-        run: pip install -r backend/requirements.txt
+      # ─── 2. Install deps ────────────────────────────────────────
+      - name: Install root & workspace deps
+        run: npm ci
 
-      - name: Run back-end tests (placeholder)
+      - name: Install backend deps
         run: |
-          if [ -d tests ]; then
-            python -m pytest -q
-          else
-            echo "No tests yet – skipping."
-          fi
+          python -m pip install --upgrade pip uv
+          uv pip install -r backend/requirements.txt
+          # tooling that isn’t in backend/requirements.txt
+          uv pip install black pytest
 
-      # 4️⃣  Configure AWS credentials using access keys
+      # ─── 3. Composite sanity check (lint + build + synth + pytest)
+      - name: npm run check
+        run: npm run check
+
+      # ─── 4. Infrastructure deps (needed only for synth/deploy) ───
+      - name: Install infra deps
+        working-directory: infrastructure
+        run: npm ci
+
+      - name: CDK synth (repeat with full deps)
+        working-directory: infrastructure
+        run: npx cdk synth
+
+      # ─── 5. Configure AWS creds & deploy (main pushes only) ─────
       - name: Configure AWS credentials
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION || 'us-west-2' }}
+          aws-region: ${{ env.AWS_REGION }}
 
-      # 5️⃣  Install CDK & infra deps
-      - name: Install CDK & infra deps
-        working-directory: infrastructure
-        run: npm ci
-
-      # 6️⃣  CDK synth to ensure infra compiles
-      - name: CDK synth
-        working-directory: infrastructure
-        run: npx cdk synth
-
-      # 7️⃣  Deploy only if on main branch and not a PR
       - name: CDK deploy (no approval)
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         working-directory: infrastructure
