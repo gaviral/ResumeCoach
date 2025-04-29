@@ -9,7 +9,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "prepare": "husky install",
-    "check": "npm run -w frontend build && npx cdk -a infrastructure synth && pytest -q || true"
+    "check": "npm run -w frontend build && (cd infrastructure && npm ci && npx cdk synth) && pytest -q || true"
   },
   "repository": {
     "type": "git",
