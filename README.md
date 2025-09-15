@@ -30,16 +30,76 @@ The stack is entirely serverless on AWS:
 - **us-east-1** – ACM certificate for CloudFront
 - Global – Route 53 DNS
 
+### User Experience Flow
+
 ```mermaid
-graph TD
-  User --> Route53 --> CF[CloudFront] --> React[SPA Bundle]
-  CF -->|Origin| S3[Static Bucket]
-  React -->|HTTPS| API[HTTP API]
-  API --> Lambda
-  Lambda --> ItemsDDB[(Items Table)]
-  Lambda --> SessionsDDB[(Sessions Table)]
-  Lambda --> OpenAI{{OpenAI}}
-  note over CF,S3: _(S3 origin class upgrade pending)_
+graph LR
+  Start([User visits<br/>coach.aviralgarg.com]) --> Landing[📱 Resume Coach<br/>Web App]
+
+  Landing --> LoadExamples[📋 Load Example<br/>Resume & Job Description]
+  Landing --> PasteOwn[✏️ Paste Own<br/>Resume & Job Description]
+
+  LoadExamples --> Analysis
+  PasteOwn --> Analysis[🔍 AI Analysis<br/>GPT-4o-mini]
+
+  Analysis --> Results[📊 Structured Feedback<br/>• Qualification Level<br/>• Missing Skills<br/>• Key Strengths]
+
+  Results --> Chat[💬 Follow-up Chat<br/>Ask questions about<br/>the analysis]
+
+  Chat --> MoreQuestions{More questions?}
+  MoreQuestions -->|Yes| Chat
+  MoreQuestions -->|No| NewAnalysis{New resume?}
+
+  NewAnalysis -->|Yes| Landing
+  NewAnalysis -->|No| End([Session ends<br/>Data saved locally])
+
+  Results --> NewAnalysis
+```
+
+### Technical Implementation Flow
+
+```mermaid
+graph LR
+  Start([User visits<br/>coach.aviralgarg.com]) --> DNS[🌍 Route 53<br/>DNS Resolution]
+  DNS --> CDN[☁️ CloudFront<br/>Global CDN]
+  CDN --> SPA[📦 S3 Bucket<br/>React SPA]
+
+  SPA --> LoadAPI[📋 GET /items<br/>API Gateway → Lambda<br/>→ DynamoDB Items]
+  SPA --> InputForm[✏️ Browser<br/>LocalStorage<br/>Text Areas]
+
+  LoadAPI --> AnalysisAPI
+  InputForm --> AnalysisAPI[🔍 POST /analyze<br/>API Gateway → Lambda<br/>→ LangChain → OpenAI]
+
+  AnalysisAPI --> SessionDB[💾 DynamoDB Sessions<br/>24h TTL<br/>Pickle Serialization]
+  AnalysisAPI --> Results[📊 React Component<br/>Markdown Rendering<br/>Structured Display]
+
+  Results --> ChatAPI[💬 POST /chat<br/>API Gateway → Lambda<br/>→ Session Context → OpenAI]
+
+  ChatAPI --> MoreQuestions{More questions?}
+  MoreQuestions -->|Yes| ChatAPI
+  MoreQuestions -->|No| NewAnalysis{New resume?}
+
+  NewAnalysis -->|Yes| SPA
+  NewAnalysis -->|No| LocalStore[💽 Browser<br/>LocalStorage<br/>Session Persistence]
+
+  Results --> NewAnalysis
+
+  subgraph AWS ["🏗️ AWS Infrastructure"]
+    DNS
+    CDN
+    SPA
+    LoadAPI
+    AnalysisAPI
+    SessionDB
+    ChatAPI
+  end
+
+  subgraph External ["🌐 External Services"]
+    OpenAI[🤖 OpenAI API<br/>GPT-4o-mini]
+  end
+
+  AnalysisAPI -.-> OpenAI
+  ChatAPI -.-> OpenAI
 ```
 
 ---

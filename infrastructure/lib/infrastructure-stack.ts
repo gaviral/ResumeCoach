@@ -85,7 +85,7 @@ export class InfrastructureStack extends cdk.Stack {
         SESSIONS_TABLE_NAME: sessionsTable.tableName,
         LOG_LEVEL: 'INFO',
         // NEW – just the name, **not** the key
-        OPENAI_API_PARAM_NAME: '/ResumeCoach/OpenAIApiKey',
+        OPENAI_API_PARAM_NAME: '/ResumeCoach/OpenAIApiKey'
       },
       timeout: Duration.seconds(60), // Keep timeout reasonable for LLM calls + DDB I/O
       memorySize: 256, // May need increase depending on memory usage with state
