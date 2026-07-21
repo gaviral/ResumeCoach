@@ -28,11 +28,12 @@ prepare-deploy: clean dev-backend dev-frontend
 	# Install dependencies and run build
 	cd frontend && npm install && npm run build
 
-# Full deploy: build assets and deploy infrastructure via CDK
-deploy: prepare-deploy
-	# Install infrastructure dependencies and deploy
-	cd infrastructure && npm install
-	cd infrastructure && npx cdk deploy
+# Deploy blocked: project retired. See DECOMMISSIONED.md.
+deploy:
+	@echo "ERROR: Resume Coach is decommissioned (coach.aviralgarg.com / ResumeCoachFoundationStack)." >&2
+	@echo "ERROR: 'make deploy' is disabled. Frozen SHA 2f4323d0775bb913bd265ba3d3be712b8bd138d1." >&2
+	@echo "ERROR: See DECOMMISSIONED.md." >&2
+	@exit 1
 
 .PHONY: dev-setup
 dev-setup:

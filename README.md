@@ -1,5 +1,10 @@
 # Resume Coach
 
+> **Retired (2026-07-20).** Automatic AWS deployment is disabled. See
+> [`DECOMMISSIONED.md`](DECOMMISSIONED.md). Do not deploy. The live site at
+> `coach.aviralgarg.com` is pending teardown; frozen deployable SHA is
+> `2f4323d0775bb913bd265ba3d3be712b8bd138d1`.
+
 _This document tracks the **latest** state of the project for developers._
 
 ---
